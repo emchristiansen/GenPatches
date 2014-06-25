@@ -1,7 +1,17 @@
 import           Data.Array.Repa hiding (extract, map)
+-- import           Text.RawString.QQ
+import           Text.XML.Light
 
-type Origin = Array U DIM3 Double
+type Origin = Array U DIM1 Double
 
--- makeSensor ::
+type LookAt = Array U DIM1 Double
 
-main = putStrLn "Hi"
+
+
+-- makeSensor :: Origin ->
+
+main = do
+  -- let xml = [r|<sensor type="perspective"/>|]
+  let xml = "<sensor type=\"perspective\"/>"
+  putStrLn $ show $ parseXML xml
+  putStrLn "Hi"
