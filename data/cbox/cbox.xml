@@ -6,9 +6,9 @@
 	  <!-- <integrator type="field"> -->
 			<!-- <string name="field" value="distance"/> -->
 	  <!-- </integrator> -->
-	  <integrator type="field">
-			<string name="field" value="position"/>
-	  </integrator>
+	  <!-- <integrator type="field"> -->
+			<!-- <string name="field" value="position"/> -->
+	  <!-- </integrator> -->
 	</integrator>
 
 	<sensor type="perspective">
@@ -21,7 +21,8 @@
 
 		<transform name="toWorld">
 			<!-- <lookAt origin="278, 273, -800" target="278, 273, -799" up="0, 1, 0"/> -->
-			<lookAt origin=$ORIGIN target=$TARGET up=$UP/>
+			<!-- <lookAt origin="$ORIGIN" target="278, 273, -799" up="0, 1, 0"/> -->
+			<lookAt origin="$ORIGIN" target="$TARGET" up="$UP"/>
 		</transform>
 
 		<sampler type="ldsampler">
@@ -31,15 +32,15 @@
 		<film type="mfilm">
 			<!-- <integer name="digits" value="32"/> -->
 			<string name="fileFormat" value="numpy"/>
-			<string name="pixelFormat" value="rgb, rgb"/>
-			<string name="channelNames" value="color, position"/>
+			<!-- <string name="pixelFormat" value="rgb, rgb"/> -->
+			<!-- <string name="channelNames" value="color, position"/> -->
 			<!-- <string name="highQualityEdges" value="true"/> -->
 
 			<!-- <string name="pixelFormat" value="rgb, luminance"/> -->
 			<!-- <string name="channelNames" value="color, distance"/> -->
 			<!-- <string name="pixelFormat" value="luminance"/> -->
 			<!-- <string name="channelNames" value="distance"/> -->
-			<!-- <string name="pixelFormat" value="rgb"/> -->
+			<string name="pixelFormat" value="rgb"/>
 			<!-- <string name="channelNames" value="position"/> -->
 
 			<integer name="width" value="512"/>

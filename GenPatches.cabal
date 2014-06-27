@@ -94,6 +94,7 @@ executable GenPatches
     , repa
     -- , repa-algorithms
     , raw-strings-qq
+    , process
     , xml
 
   default-extensions:
