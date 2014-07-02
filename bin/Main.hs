@@ -2,7 +2,11 @@ import           Data.Array.Repa hiding (extract, map, (++))
 -- import           Text.RawString.QQ
 import           System.Process
 import           Text.Printf
-import           Text.XML.Light
+-- import           Text.XML.Light
+import  Data.CSV
+-- import Text.Parsec
+import Text.Parsec.String
+
 
 type Model = String
 type Origin = Array U DIM1 Double
@@ -15,7 +19,19 @@ data RenderParameters = RenderParameters Model Origin Target Up
 
 -- mitsuba building_001_macros.xml -D NUM_SAMPLES=64 -D HEIGHT=512 -D WIDTH=512
 
+numChannels :: Int
 numChannels = 3
+numRows :: Int
+numRows = 256
+numColumns :: Int
+numColumns = 256
+
+runShell :: String -> IO()
+runShell command = do
+  putStrLn command
+  process <- runCommand command
+  _ <- waitForProcess process
+  putStrLn "Done"
 
 callMitsuba :: RenderParameters -> String -> IO ()
 callMitsuba (RenderParameters model origin target up) output = do
@@ -58,10 +74,7 @@ callMitsuba (RenderParameters model origin target up) output = do
       -- upString
   -- putStrLn command
   putStrLn $ unwords args
-  process <- runCommand $ unwords ("/usr/bin/mitsuba" : args)
-  putStrLn "Running"
-  exit <- waitForProcess process
-  putStrLn "Done"
+  runShell $ unwords ("/usr/bin/mitsuba" : args)
   -- _ <- createProcess (proc "/usr/bin/mitsuba" args)
   -- _ <- createProcess (shell
   -- putStrLn $ show x
@@ -79,21 +92,55 @@ pythonScript npyPath csvPattern =
   in
     unlines $ first ++ second
 
-render :: String -> RenderParameters -> IO ()
+loadCSVs :: String -> IO [[[String]]]
+loadCSVs csvPattern = do
+  let
+    load i = parseFromFile csvFile $ printf csvPattern i
+    right i = do
+      Right r <- load i
+      return r
+  mapM right [0 .. numChannels]
+
+data Rendering = Rendering (Array U DIM3 Double) deriving (Show)
+
+getRendering :: [[[String]]] -> Rendering
+getRendering csv =
+  let
+    doubles :: [[[Double]]]
+    doubles = map (map (map read)) csv
+    -- all :: Array U DIM3 Double
+    -- all = fromListUnboxed (Z :. numRows :. numColumns :. numChannels) doubles
+    shape = Z :. numRows :. numColumns :. numChannels
+    f (Z :. row :. column :. channel) = doubles !! row !! column !! channel
+  in
+    Rendering
+      (computeS $ fromFunction shape f)
+      -- (fromListUnboxed ) (take 3 doubles))
+      -- (slice all (Z :. All :. All :. (Range 0 numChannels)))
+
+
+render :: String -> RenderParameters -> IO Rendering
 render salt p = do
   let
     npyPath = printf "/tmp/render_%s.npy" salt
-    csvPattern = (printf "/tmp/render_%s" salt) ++ "_%d.csv"
+    csvPattern = printf "/tmp/render_%s" salt ++ "_%d.csv"
+    pyPath = printf "/tmp/loadcsv_%s.py" salt
   callMitsuba p npyPath
-  pythonScript npyPath csvPattern
+  writeFile pyPath $ pythonScript npyPath csvPattern
+  runShell $ unlines ["/usr/bin/python", pyPath]
+  csvs <- loadCSVs csvPattern
+  return $ getRendering csvs
 
+main :: IO()
 main = do
   let
     model = "data/cbox/cbox.xml"
-    output = "/tmp/render.npy"
+    -- output = "/tmp/render.npy"
     origin = fromListUnboxed (Z :. 3) [278.0, 273.0, -800.0]
     target = fromListUnboxed (Z :. 3) [278.0, 273.0, -799.0]
     up = fromListUnboxed (Z :. 3) [0.0, 1.0, 0.0]
     renderParameters = RenderParameters model origin target up
-  callMitsuba renderParameters output
+  rendering <- render "test0" renderParameters
+  print rendering
+  -- callMitsuba renderParameters output
   putStrLn "Done"

@@ -94,6 +94,8 @@ executable GenPatches
     , repa
     -- , repa-algorithms
     , raw-strings-qq
+    , MissingH
+    , parsec
     , process
     , xml
 
