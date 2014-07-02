@@ -101,6 +101,7 @@ executable GenPatches
 
   default-extensions:
     TemplateHaskell
+    RankNTypes
 
 --executable thriftier
   --hs-source-dirs:

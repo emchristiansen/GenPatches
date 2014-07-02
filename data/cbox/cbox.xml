@@ -43,12 +43,12 @@
 			<string name="pixelFormat" value="rgb"/>
 			<!-- <string name="channelNames" value="position"/> -->
 
-			<integer name="width" value="512"/>
-			<integer name="height" value="512"/>
-			<integer name="cropOffsetX" value="128"/>
-			<integer name="cropOffsetY" value="128"/>
-			<integer name="cropWidth" value="256"/>
-			<integer name="cropHeight" value="256"/>
+			<integer name="width" value="$WIDTH"/>
+			<integer name="height" value="$WIDTH"/>
+			<!-- <integer name="cropOffsetX" value="128"/> -->
+			<!-- <integer name="cropOffsetY" value="128"/> -->
+			<!-- <integer name="cropWidth" value="256"/> -->
+			<!-- <integer name="cropHeight" value="256"/> -->
 
 			<rfilter type="gaussian"/>
 		</film>
