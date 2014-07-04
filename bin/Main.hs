@@ -75,7 +75,7 @@ callMitsuba p output = do
       , "-D"
       , printf "UP=\"%s\"" $ formatVector $ p ^. upL
       , "-D"
-      , printf "WIDTH=\"%s\"" $ p ^. widthL
+      , printf "WIDTH=\"%s\"" $ show $ p ^. widthL
       , "-D"
       , printf "INTEGRATOR=\"%s\"" $ p ^. integratorL]
   putStrLn $ unwords args

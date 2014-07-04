@@ -105,6 +105,9 @@ executable GenPatches
     TemplateHaskell
     RankNTypes
 
+  ghc-options:
+    -auto-all -caf-all
+
 --executable thriftier
   --hs-source-dirs:
     --bin
