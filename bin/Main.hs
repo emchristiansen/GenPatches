@@ -6,7 +6,8 @@ import           Text.Printf
 import  Data.CSV
 -- import Text.Parsec
 import Text.Parsec.String
-
+import Codec.Picture
+import GHC.Float
 
 type Model = String
 type Origin = Array U DIM1 Double
@@ -23,7 +24,7 @@ data RenderParameters = RenderParameters Model Origin Target Up
 numChannels :: Int
 numChannels = 3
 width :: Int
-width = 16
+width = 128
 
 runShell :: String -> IO()
 runShell command = do
@@ -140,6 +141,17 @@ render salt p = do
   print $ csvs |> head |> head |> length |> show
   return $ getRendering csvs
 
+showRendering :: Rendering -> String -> IO()
+showRendering (Rendering rgb) pattern = do
+  let
+    fromXY x y = PixelRGBF
+      (double2Float $ index rgb (Z :. y :. x :. 0))
+      (double2Float $ index rgb (Z :. y :. x :. 1))
+      (double2Float $ index rgb (Z :. y :. x :. 2))
+    image = ImageRGBF $ generateImage fromXY width width
+  -- saveRadianceImage (printf pattern "rgb") image
+  savePngImage (printf pattern "rgb") image
+
 main :: IO()
 main = do
   let
@@ -150,6 +162,8 @@ main = do
     up = fromListUnboxed (Z :. 3) [0.0, 1.0, 0.0]
     renderParameters = RenderParameters model origin target up
   rendering <- render "test0" renderParameters
-  print rendering
+  -- showRendering rendering "/tmp/rendering_%s.hdr"
+  showRendering rendering "/tmp/rendering_%s.png"
+  -- print rendering
   -- callMitsuba renderParameters output
   putStrLn "Done"

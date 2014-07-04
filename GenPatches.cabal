@@ -97,6 +97,7 @@ executable GenPatches
     , MissingH
     , parsec
     , process
+    , JuicyPixels
     , xml
 
   default-extensions:
