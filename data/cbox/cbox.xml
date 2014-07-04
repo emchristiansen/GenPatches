@@ -11,8 +11,6 @@
 	  <!-- </integrator> -->
 
 	<sensor type="perspective">
-		<string name="fovAxis" value="x"/>
-
 		<float name="nearClip" value="10"/>
 		<float name="farClip" value="2800"/>
 		<float name="focusDistance" value="1000"/>
