@@ -8,23 +8,44 @@ import  Data.CSV
 import Text.Parsec.String
 import Codec.Picture
 import GHC.Float
+import Control.Lens hiding (index)
+-- import Control.Lens.TH
 
 type Model = String
 type Origin = Array U DIM1 Double
 type Target = Array U DIM1 Double
 type Up = Array U DIM1 Double
+type Integrator = String
+type NumChannels = Int
 -- type Width = Int
 
 type Output = String
 
-data RenderParameters = RenderParameters Model Origin Target Up
+-- declareLenses [d|
+--   data Foo = Foo {
+--     fooX :: Int,
+--     bar :: String
+--   }|]
+
+declareLenses [d|
+  data RenderParameters = RenderParameters {
+    modelL :: String,
+    originL :: Array U DIM1 Double,
+    targetL :: Array U DIM1 Double,
+    upL :: Array U DIM1 Double,
+    numChannelsL :: Int,
+    integratorL :: String,
+    widthL :: Int
+  }|]
+
+-- data RenderParameters = RenderParameters Model Origin Target Up NumChannels Integrator
 
 -- mitsuba building_001_macros.xml -D NUM_SAMPLES=64 -D HEIGHT=512 -D WIDTH=512
 
-numChannels :: Int
-numChannels = 3
-width :: Int
-width = 128
+-- numChannels :: Int
+-- numChannels = 3
+-- width :: Int
+-- width = 128
 
 runShell :: String -> IO()
 runShell command = do
@@ -35,47 +56,28 @@ runShell command = do
   putStrLn "Done"
 
 callMitsuba :: RenderParameters -> String -> IO ()
-callMitsuba (RenderParameters model origin target up) output = do
+callMitsuba p output = do
   let
-    originString :: String
-    originString = printf
+    formatVector :: Array U DIM1 Double -> String
+    formatVector vector = printf
       "%f,%f,%f"
-      (index origin (Z :. 0))
-      (index origin (Z :. 1))
-      (index origin (Z :. 2))
-    targetString :: String
-    targetString = printf
-      "%f,%f,%f"
-      (index target (Z :. 0))
-      (index target (Z :. 1))
-      (index target (Z :. 2))
-    upString :: String
-    upString = printf
-      "%f,%f,%f"
-      (index up (Z :. 0))
-      (index up (Z :. 1))
-      (index up (Z :. 2))
+      (index vector (Z :. 0))
+      (index vector (Z :. 1))
+      (index vector (Z :. 2))
     args =
-      [ model
+      [ p ^. modelL
       , "-o"
       , output
       , "-D"
-      , printf "ORIGIN=\"%s\"" originString
+      , printf "ORIGIN=\"%s\"" $ formatVector $ p ^. originL
       , "-D"
-      , printf "TARGET=\"%s\"" targetString
+      , printf "TARGET=\"%s\"" $ formatVector $ p ^. targetL
       , "-D"
-      , printf "UP=\"%s\"" upString
+      , printf "UP=\"%s\"" $ formatVector $ p ^. upL
       , "-D"
-      , printf "WIDTH=\"%s\"" (show width)]
-    -- command :: String
-    -- command = printf
-      -- "mitsuba %s -o %s -D ORIGIN=\"%s\" TARGET=\"%s\" UP=\"%s\""
-      -- model
-      -- output
-      -- originString
-      -- targetString
-      -- upString
-  -- putStrLn command
+      , printf "WIDTH=\"%s\"" $ p ^. widthL
+      , "-D"
+      , printf "INTEGRATOR=\"%s\"" $ p ^. integratorL]
   putStrLn $ unwords args
   runShell $ unwords ("/usr/bin/mitsuba" : args)
   -- _ <- createProcess (proc "/usr/bin/mitsuba" args)
@@ -83,8 +85,8 @@ callMitsuba (RenderParameters model origin target up) output = do
   -- putStrLn $ show x
   putStrLn "Sup"
 
-pythonScript :: String -> String -> String
-pythonScript npyPath csvPattern =
+pythonScript :: Int -> String -> String -> String
+pythonScript numChannels npyPath csvPattern =
   let
     first = ["import numpy", printf "arr = numpy.load(\"%s\")" npyPath]
     save i = printf
@@ -95,8 +97,8 @@ pythonScript npyPath csvPattern =
   in
     unlines $ first ++ second
 
-loadCSVs :: String -> IO [[[String]]]
-loadCSVs csvPattern = do
+loadCSVs :: Int -> String -> IO [[[String]]]
+loadCSVs numChannels csvPattern = do
   let
     load i = parseFromFile csvFile $ printf csvPattern i
     right i = do
@@ -109,6 +111,8 @@ data Rendering = Rendering (Array U DIM3 Double) deriving (Show)
 getRendering :: [[[String]]] -> Rendering
 getRendering csv =
   let
+    numChannels = length csv
+    width = length $ head csv
     doubles :: [[[Double]]]
     doubles = map (map (map read)) csv
     -- all :: Array U DIM3 Double
@@ -121,8 +125,8 @@ getRendering csv =
       -- (fromListUnboxed ) (take 3 doubles))
       -- (slice all (Z :. All :. All :. (Range 0 numChannels)))
 
-(|>) :: forall t t1. t1 -> (t1 -> t) -> t
-(|>) x y = y x
+-- (|>) :: forall t t1. t1 -> (t1 -> t) -> t
+-- (|>) x y = y x
 
 render :: String -> RenderParameters -> IO Rendering
 render salt p = do
@@ -131,14 +135,14 @@ render salt p = do
     csvPattern = printf "/tmp/render_%s" salt ++ "_%d.csv"
     pyPath = printf "/tmp/loadcsv_%s.py" salt
   callMitsuba p npyPath
-  writeFile pyPath $ pythonScript npyPath csvPattern
+  writeFile pyPath $ pythonScript (p ^. numChannelsL) npyPath csvPattern
   runShell $ unwords ["/usr/bin/python", pyPath]
-  csvs <- loadCSVs csvPattern
+  csvs <- loadCSVs (p ^. numChannelsL) csvPattern
   -- print csvs
   print $ show $ length csvs
   print $ show $ length $ head csvs
   -- print $ show $ length $ (head . head) csvs
-  print $ csvs |> head |> head |> length |> show
+  csvs & head & head & length & show & print
   return $ getRendering csvs
 
 showRendering :: Rendering -> String -> IO()
@@ -148,6 +152,7 @@ showRendering (Rendering rgb) pattern = do
       (double2Float $ index rgb (Z :. y :. x :. 0))
       (double2Float $ index rgb (Z :. y :. x :. 1))
       (double2Float $ index rgb (Z :. y :. x :. 2))
+    Z :. width :. _ :. 3 = extent rgb
     image = ImageRGBF $ generateImage fromXY width width
   -- saveRadianceImage (printf pattern "rgb") image
   savePngImage (printf pattern "rgb") image
@@ -160,8 +165,15 @@ main = do
     origin = fromListUnboxed (Z :. 3) [278.0, 273.0, -800.0]
     target = fromListUnboxed (Z :. 3) [278.0, 273.0, -799.0]
     up = fromListUnboxed (Z :. 3) [0.0, 1.0, 0.0]
-    renderParameters = RenderParameters model origin target up
-  rendering <- render "test0" renderParameters
+    renderParameters = RenderParameters
+      model
+      origin
+      target
+      up
+      3
+      "<integrator type=\"path\"/>"
+      128
+  rendering <- render "test0_rgb" renderParameters
   -- showRendering rendering "/tmp/rendering_%s.hdr"
   showRendering rendering "/tmp/rendering_%s.png"
   -- print rendering

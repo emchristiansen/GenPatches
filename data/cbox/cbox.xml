@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <scene version="0.5.0">
-	<integrator type="multichannel">
-	  <integrator type="path"/>
+	  <!-- <integrator type="path"/> -->
+		$INTEGRATOR
 	  <!-- <integrator type="field"> -->
 			<!-- <string name="field" value="distance"/> -->
 	  <!-- </integrator> -->
-	  <integrator type="field">
-			<string name="field" value="position"/>
-	  </integrator>
-	</integrator>
+	  <!-- <integrator type="field"> -->
+			<!-- <string name="field" value="position"/> -->
+	  <!-- </integrator> -->
 
 	<sensor type="perspective">
 		<string name="fovAxis" value="x"/>
@@ -40,8 +39,8 @@
 			<!-- <string name="channelNames" value="color, distance"/> -->
 			<!-- <string name="pixelFormat" value="luminance"/> -->
 			<!-- <string name="channelNames" value="distance"/> -->
-			<string name="pixelFormat" value="rgb, rgb"/>
-			<string name="channelNames" value="color, position"/>
+			<!-- <string name="pixelFormat" value="rgb, rgb"/> -->
+			<!-- <string name="channelNames" value="color, position"/> -->
 			<!-- <string name="channelNames" value="position"/> -->
 
 			<integer name="width" value="$WIDTH"/>
