@@ -103,20 +103,29 @@ declareLenses [d|
     distance :: Array U DIM3 Double
   } deriving (Show) |]
 
-
-
-makeMitsubaScript :: String -> Parameters -> IO String
-makeMitsubaScript salt p = do
+makeMitsubaScript :: String -> View -> String
+makeMitsubaScript template v =
    let
-     replaceIntegrator = replace "$INTEGRATOR" (showXML $ p ^. integratorL)
-     replaceSensor = replace "$SENSOR" (showXML $ p ^. sensorL)
-     scriptPath = joinPath ["/tmp", printf "%d_mitsuba.xml" salt]
-   template <- readFile $ joinPath [p ^. templateDirectoryL, p ^. templateNameL]
-   putStrLn $ printf "Writing Mitsuba script: %s" scriptPath
-   writeFile
-     scriptPath
-     (template & replaceIntegrator & replaceSensor)
-   return scriptPath
+     replaceIntegrator = replace "$INTEGRATOR" (showXML $ v ^. integratorL)
+     replaceSensor = replace "$SENSOR" (showXML $ v ^. sensorL)
+    in
+      template & replaceIntegrator & replaceSensor
+
+makeSceneDirectory :: FilePath -> String -> IO String
+makeSceneDirectory modelDirectory mitsubaScript = do
+  salt <- randomString 16
+  let
+    directory = joinPath [
+      "/tmp",
+      printf "%s_%s" salt $ last $ splitPath modelDirectory]
+    scriptPath = joinPath [ directory, "script.xml"]
+  putStrLn $ printf "Copying %s to %s." modelDirectory directory
+  copyRecursively modelDirectory directory
+  putStrLn $ printf "Writing Mitsuba script to %s" scriptPath
+  writeFile
+    scriptPath
+    mitsubaScript
+  return scriptPath
 
 callMitsuba :: FilePath -> FilePath -> IO ()
 callMitsuba scriptPath outPath = do

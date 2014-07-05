@@ -12,6 +12,7 @@ import Control.Exception
 import System.Exit
 import Data.String.Utils
 import System.FilePath.Posix
+import System.Random
 
 runShell :: String -> IO()
 runShell command = do
@@ -22,3 +23,13 @@ runShell command = do
   case exitCode of
     ExitSuccess -> putStrLn "Shell command finished."
     ExitFailure _ -> error $ printf "Shell command failed: %s" command
+
+keysChar = ['a'..'z']
+keysNum = ['0'..'9']
+
+randomString :: Int -> IO String
+randomString length' = do
+  let
+    chars = ['a' .. 'z'] ++ ['0' .. '9']
+  indices <- sequence $ replicateIO $ randomIO (0, length chars - 1)
+  return $ map (chars !!) indices
