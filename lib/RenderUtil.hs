@@ -12,6 +12,7 @@ import Control.Exception
 import System.Exit
 import Data.String.Utils
 import System.FilePath.Posix
+import SystemUtil
 
 class ShowXML a where
   showXML :: a -> String
@@ -75,13 +76,17 @@ instance ShowXML Sensor where
 	  "</sensor>"]
 
 declareLenses [d|
-  data Parameters = Parameters {
-    templatePathL :: FilePath,
+  data View = View {
     numChannelsL :: Int,
     integratorL :: Integrator,
     sensorL :: Sensor
   } deriving (Show) |]
 
+declareLenses [d|
+  data Model = Model {
+    directoryL :: FilePath,
+    templateL :: String
+  } deriving (Show) |]
 
 declareLenses [d|
   -- A Rendering is the direct output of a Mitsuba rendering of a scene.
@@ -98,15 +103,7 @@ declareLenses [d|
     distance :: Array U DIM3 Double
   } deriving (Show) |]
 
-runShell :: String -> IO()
-runShell command = do
-  putStrLn "Running shell command:"
-  putStrLn command
-  process <- runCommand command
-  exitCode <- waitForProcess process
-  case exitCode of
-    ExitSuccess -> putStrLn "Shell command finished."
-    ExitFailure _ -> error $ printf "Shell command failed: %s" command
+
 
 makeMitsubaScript :: String -> Parameters -> IO String
 makeMitsubaScript salt p = do
@@ -114,7 +111,7 @@ makeMitsubaScript salt p = do
      replaceIntegrator = replace "$INTEGRATOR" (showXML $ p ^. integratorL)
      replaceSensor = replace "$SENSOR" (showXML $ p ^. sensorL)
      scriptPath = joinPath ["/tmp", printf "%d_mitsuba.xml" salt]
-   template <- readFile $ p ^. templatePathL
+   template <- readFile $ joinPath [p ^. templateDirectoryL, p ^. templateNameL]
    putStrLn $ printf "Writing Mitsuba script: %s" scriptPath
    writeFile
      scriptPath
