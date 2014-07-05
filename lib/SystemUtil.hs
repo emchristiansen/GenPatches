@@ -13,6 +13,7 @@ import System.Exit
 import Data.String.Utils
 import System.FilePath.Posix
 import System.Random
+import Control.Monad
 
 runShell :: String -> IO()
 runShell command = do
@@ -24,12 +25,11 @@ runShell command = do
     ExitSuccess -> putStrLn "Shell command finished."
     ExitFailure _ -> error $ printf "Shell command failed: %s" command
 
-keysChar = ['a'..'z']
-keysNum = ['0'..'9']
+copyDirectory :: FilePath -> FilePath -> IO ()
+copyDirectory from to = runShell $ printf "cp -r %s %s" from to
 
 randomString :: Int -> IO String
 randomString length' = do
-  let
-    chars = ['a' .. 'z'] ++ ['0' .. '9']
-  indices <- sequence $ replicateIO $ randomIO (0, length chars - 1)
-  return $ map (chars !!) indices
+  let chars = ['a' .. 'z'] ++ ['0' .. '9']
+  indices' <- replicateM length' $ randomRIO (0, length chars - 1)
+  return $ map (chars !!) indices'

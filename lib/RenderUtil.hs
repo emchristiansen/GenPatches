@@ -120,7 +120,7 @@ makeSceneDirectory modelDirectory mitsubaScript = do
       printf "%s_%s" salt $ last $ splitPath modelDirectory]
     scriptPath = joinPath [ directory, "script.xml"]
   putStrLn $ printf "Copying %s to %s." modelDirectory directory
-  copyRecursively modelDirectory directory
+  copyDirectory modelDirectory directory
   putStrLn $ printf "Writing Mitsuba script to %s" scriptPath
   writeFile
     scriptPath
