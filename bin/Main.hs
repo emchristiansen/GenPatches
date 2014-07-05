@@ -1,14 +1,14 @@
-import           Data.Array.Repa hiding (extract, map, (++))
+import           Data.Array.Repa    hiding (extract, map, (++))
 -- import           Text.RawString.QQ
 import           System.Process
 import           Text.Printf
 -- import           Text.XML.Light
-import  Data.CSV
+import           Data.CSV
 -- import Text.Parsec
-import Text.Parsec.String
-import Codec.Picture
-import GHC.Float
-import Control.Lens hiding (index)
+import           Codec.Picture
+import           Control.Lens       hiding (index)
+import           GHC.Float
+import           Text.Parsec.String
 -- import Control.Lens.TH
 
 type Model = String

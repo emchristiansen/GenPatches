@@ -1,18 +1,18 @@
 module RenderUtil where
 
-import           Data.Array.Repa hiding (extract, map, (++))
+import           Codec.Picture
+import           Control.Exception
+import           Control.Lens          hiding (index)
+import           Data.Array.Repa       hiding (extract, map, (++))
+import           Data.CSV
+import           Data.String.Utils
+import           GHC.Float
+import           System.Exit
+import           System.FilePath.Posix
 import           System.Process
+import           SystemUtil
+import           Text.Parsec.String
 import           Text.Printf
-import  Data.CSV
-import Text.Parsec.String
-import Codec.Picture
-import GHC.Float
-import Control.Lens hiding (index)
-import Control.Exception
-import System.Exit
-import Data.String.Utils
-import System.FilePath.Posix
-import SystemUtil
 
 class ShowXML a where
   showXML :: a -> String
@@ -49,31 +49,31 @@ formatVector vector = printf
 
 instance ShowXML Sensor where
   showXML s = unlines [
-	  "<sensor type=\"perspective\">",
-		"<float name=\"nearClip\" value=\"10\"/>",
-		"<float name=\"farClip\" value=\"2800\"/>",
-		"<float name=\"focusDistance\" value=\"1000\"/>",
-		printf "<float name=\"fov\" value=\"%f\"/>" $ s ^. fovInDegreesL,
+    "<sensor type=\"perspective\">",
+    "<float name=\"nearClip\" value=\"10\"/>",
+    "<float name=\"farClip\" value=\"2800\"/>",
+    "<float name=\"focusDistance\" value=\"1000\"/>",
+    printf "<float name=\"fov\" value=\"%f\"/>" $ s ^. fovInDegreesL,
     "",
-		"<transform name=\"toWorld\">",
-		printf
+    "<transform name=\"toWorld\">",
+    printf
       "<lookAt origin=\"%s\" target=\"%s\" up=\"%s\"/>"
       (formatVector $ s ^. originL)
       (formatVector $ s ^. targetL)
       (formatVector $ s ^. upL),
-		"</transform>",
+    "</transform>",
     "",
-		"<sampler type=\"ldsampler\">",
-		"<integer name=\"sampleCount\" value=\"64\"/>",
-		"</sampler>",
+    "<sampler type=\"ldsampler\">",
+    "<integer name=\"sampleCount\" value=\"64\"/>",
+    "</sampler>",
     "",
-		"<film type=\"mfilm\">",
-		"<string name=\"fileFormat\" value=\"numpy\"/>",
-		printf "<integer name=\"width\" value=\"%d\"/>" $ s ^. widthL,
-		printf "<integer name=\"height\" value=\"%d\"/>" $ s ^. widthL,
-		"<rfilter type=\"gaussian\"/>",
-		"</film>",
-	  "</sensor>"]
+    "<film type=\"mfilm\">",
+    "<string name=\"fileFormat\" value=\"numpy\"/>",
+    printf "<integer name=\"width\" value=\"%d\"/>" $ s ^. widthL,
+    printf "<integer name=\"height\" value=\"%d\"/>" $ s ^. widthL,
+    "<rfilter type=\"gaussian\"/>",
+    "</film>",
+    "</sensor>"]
 
 declareLenses [d|
   data View = View {

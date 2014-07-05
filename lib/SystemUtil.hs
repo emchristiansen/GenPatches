@@ -1,19 +1,19 @@
 module SystemUtil where
 
-import           Data.Array.Repa hiding (extract, map, (++))
+import           Codec.Picture
+import           Control.Exception
+import           Control.Lens          hiding (index)
+import           Control.Monad
+import           Data.Array.Repa       hiding (extract, map, (++))
+import           Data.CSV
+import           Data.String.Utils
+import           GHC.Float
+import           System.Exit
+import           System.FilePath.Posix
 import           System.Process
+import           System.Random
+import           Text.Parsec.String
 import           Text.Printf
-import  Data.CSV
-import Text.Parsec.String
-import Codec.Picture
-import GHC.Float
-import Control.Lens hiding (index)
-import Control.Exception
-import System.Exit
-import Data.String.Utils
-import System.FilePath.Posix
-import System.Random
-import Control.Monad
 
 runShell :: String -> IO()
 runShell command = do
