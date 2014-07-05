@@ -10,6 +10,8 @@ import GHC.Float
 import Control.Lens hiding (index)
 import Control.Exception
 import System.Exit
+import Data.String.Utils
+import System.FilePath.Posix
 
 class ShowXML a where
   showXML :: a -> String
@@ -74,7 +76,7 @@ instance ShowXML Sensor where
 
 declareLenses [d|
   data Parameters = Parameters {
-    modelPathL :: FilePath,
+    templatePathL :: FilePath,
     numChannelsL :: Int,
     integratorL :: Integrator,
     sensorL :: Sensor
@@ -106,30 +108,26 @@ runShell command = do
     ExitSuccess -> putStrLn "Shell command finished."
     ExitFailure _ -> error $ printf "Shell command failed: %s" command
 
-callMitsuba :: Parameters -> FilePath -> IO ()
-callMitsuba p output = do
-  let
-    formatVector :: Array U DIM1 Double -> String
-    formatVector vector = printf
-      "%f,%f,%f"
-      (index vector (Z :. 0))
-      (index vector (Z :. 1))
-      (index vector (Z :. 2))
-    args = [
-      p ^. modelL,
-      "-o",
-      output,
-      "-D",
-      printf "ORIGIN=\"%s\"" $ formatVector $ p ^. originL,
-      "-D",
-      printf "TARGET=\"%s\"" $ formatVector $ p ^. targetL,
-      "-D",
-      printf "UP=\"%s\"" $ formatVector $ p ^. upL,
-      "-D",
-      printf "WIDTH=\"%s\"" $ show $ p ^. widthL,
-      "-D",
-      printf "INTEGRATOR=\"%s\"" $ p ^. integratorL]
-  runShell $ unwords ("/usr/bin/mitsuba" : args)
+makeMitsubaScript :: String -> Parameters -> IO String
+makeMitsubaScript salt p = do
+   let
+     replaceIntegrator = replace "$INTEGRATOR" (showXML $ p ^. integratorL)
+     replaceSensor = replace "$SENSOR" (showXML $ p ^. sensorL)
+     scriptPath = joinPath ["/tmp", printf "%d_mitsuba.xml" salt]
+   template <- readFile $ p ^. templatePathL
+   putStrLn $ printf "Writing Mitsuba script: %s" scriptPath
+   writeFile
+     scriptPath
+     (template & replaceIntegrator & replaceSensor)
+   return scriptPath
+
+callMitsuba :: FilePath -> FilePath -> IO ()
+callMitsuba scriptPath outPath = do
+  runShell $ unwords [
+    "/usr/bin/mitsuba",
+    scriptPath,
+    "-o",
+    outPath]
 
 makePythonScript :: Int -> String -> String -> String
 makePythonScript numChannels npyPath csvPattern =
