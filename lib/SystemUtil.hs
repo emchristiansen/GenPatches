@@ -1,18 +1,9 @@
 module SystemUtil where
 
-import           Codec.Picture
-import           Control.Exception
-import           Control.Lens          hiding (index)
 import           Control.Monad
-import           Data.Array.Repa       hiding (extract, map, (++))
-import           Data.CSV
-import           Data.String.Utils
-import           GHC.Float
 import           System.Exit
-import           System.FilePath.Posix
 import           System.Process
 import           System.Random
-import           Text.Parsec.String
 import           Text.Printf
 
 runShell :: String -> IO()

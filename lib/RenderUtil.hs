@@ -170,22 +170,25 @@ parseRenderingComponent csv =
     assert (width == height)
     computeS $ fromFunction shape f
 
--- render :: String -> Parameters -> IO Rendering
--- render salt p = do
---   let
---     npyPath = printf "/tmp/render_%s.npy" salt
---     csvPattern = printf "/tmp/render_%s" salt ++ "_%d.csv"
---     pyPath = printf "/tmp/loadcsv_%s.py" salt
---   callMitsuba p npyPath
---   writeFile pyPath $ makePythonScript (p ^. numChannelsL) npyPath csvPattern
---   runShell $ unwords ["/usr/bin/python", pyPath]
---   csvs <- loadCSVs (p ^. numChannelsL) csvPattern
---   -- print csvs
---   print $ show $ length csvs
---   print $ show $ length $ head csvs
---   -- print $ show $ length $ (head . head) csvs
---   csvs & head & head & length & show & print
---   return $ parseRenderingComponent csvs
+renderComponent :: Model -> View -> IO (Array U DIM3 Double)
+renderComponent m v = do
+  template <- readFile $ joinPath [m ^. directoryL, m ^. templateL]
+  let
+    mitsubaScript = makeMitsubaScript template v
+    npyPath = joinPath[m ^. directoryL, "render.npy"]
+    csvPattern = joinPath[m ^. directoryL, "render_%d.csv"]
+    pythonScript = makePythonScript (v ^. numChannelsL) npyPath csvPattern
+    pyPath = joinPath[m ^. directoryL, "npy_to_csvs.py"]
+  scriptPath <- makeSceneDirectory (m ^. directoryL) mitsubaScript
+  callMitsuba scriptPath npyPath
+  writeFile pyPath pythonScript
+  runShell $ unwords ["/usr/bin/python", pyPath]
+  csvs <- loadCSVs (v ^. numChannelsL) csvPattern
+
+  print $ show $ length csvs
+  print $ show $ length $ head csvs
+  csvs & head & head & length & show & print
+  return $ parseRenderingComponent csvs
 --
 -- showRendering :: Rendering -> String -> IO()
 -- showRendering (Rendering rgb) pattern = do
