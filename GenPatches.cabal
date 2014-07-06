@@ -106,6 +106,7 @@ library
   default-extensions:
     TemplateHaskell
     RankNTypes
+    QuasiQuotes
 
   ghc-options:
     -Wall

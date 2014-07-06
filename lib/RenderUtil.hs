@@ -7,12 +7,11 @@ import           Data.Array.Repa       hiding (extract, map, (++))
 import           Data.CSV
 import           Data.String.Utils
 import           GHC.Float
-import           System.Exit
 import           System.FilePath.Posix
-import           System.Process
 import           SystemUtil
 import           Text.Parsec.String
 import           Text.Printf
+import           Text.RawString.QQ
 
 class ShowXML a where
   showXML :: a -> String
@@ -22,14 +21,16 @@ data Integrator = RGB | Position | Distance
 
 instance ShowXML Integrator where
   showXML RGB = "<integrator type=\"path\"/>"
-  showXML Position = unlines [
-    "<integrator type=\"field\"/>",
-    "<string name=\"field\" value=\"position\"/>",
-    "</integrator>"]
-  showXML Distance = unlines [
-    "<integrator type=\"field\"/>",
-    "<string name=\"field\" value=\"distance\"/>",
-    "</integrator>"]
+  showXML Position = [r|
+<integrator type="field">
+  <string name="field" value="position"/>
+</integrator>
+  |]
+  showXML Distance = [r|
+<integrator type="field">
+  <string name="field" value="distance"/>
+</integrator>
+  |]
 
 declareLenses [d|
   data Sensor = Sensor {
@@ -37,7 +38,9 @@ declareLenses [d|
     originL :: Array U DIM1 Double,
     targetL :: Array U DIM1 Double,
     upL :: Array U DIM1 Double,
-    widthL :: Int
+    widthL :: Int,
+    numChannelsL' :: Int,
+    sampleCountL :: Int
   } deriving (Show) |]
 
 formatVector :: Array U DIM1 Double -> String
@@ -47,33 +50,85 @@ formatVector vector = printf
   (index vector (Z :. 1))
   (index vector (Z :. 2))
 
+testString :: String
+testString = [r|This is line one.
+This is line two.
+|]
+
 instance ShowXML Sensor where
-  showXML s = unlines [
-    "<sensor type=\"perspective\">",
-    "<float name=\"nearClip\" value=\"10\"/>",
-    "<float name=\"farClip\" value=\"2800\"/>",
-    "<float name=\"focusDistance\" value=\"1000\"/>",
-    printf "<float name=\"fov\" value=\"%f\"/>" $ s ^. fovInDegreesL,
-    "",
-    "<transform name=\"toWorld\">",
-    printf
-      "<lookAt origin=\"%s\" target=\"%s\" up=\"%s\"/>"
-      (formatVector $ s ^. originL)
-      (formatVector $ s ^. targetL)
-      (formatVector $ s ^. upL),
-    "</transform>",
-    "",
-    "<sampler type=\"ldsampler\">",
-    "<integer name=\"sampleCount\" value=\"64\"/>",
-    "</sampler>",
-    "",
-    "<film type=\"mfilm\">",
-    "<string name=\"fileFormat\" value=\"numpy\"/>",
-    printf "<integer name=\"width\" value=\"%d\"/>" $ s ^. widthL,
-    printf "<integer name=\"height\" value=\"%d\"/>" $ s ^. widthL,
-    "<rfilter type=\"gaussian\"/>",
-    "</film>",
-    "</sensor>"]
+  showXML s = printf
+    [r|
+<sensor type="perspective">
+  <float name="nearClip" value="10"/>
+  <float name="farClip" value="2800"/>
+  <float name="focusDistance" value="1000"/>
+  <float name="fov" value="%f"/>
+
+  <transform name="toWorld">
+    <lookAt origin="%s" target="%s" up="%s"/>
+  </transform>
+
+  <sampler type="ldsampler">
+    <integer name="sampleCount" value="%d"/>
+  </sampler>
+
+  <film type="mfilm">
+    <string name="fileFormat" value="numpy"/>
+    <integer name="width" value="%d"/>
+    <integer name="height" value="%d"/>
+    <string name="pixelFormat" value="%s"/>
+    <rfilter type="gaussian"/>
+  </film>
+</sensor>|]
+    (s ^. fovInDegreesL)
+    (formatVector $ s ^. originL)
+    (formatVector $ s ^. targetL)
+    (formatVector $ s ^. upL)
+    (s ^. sampleCountL)
+    (s ^. widthL)
+    (s ^. widthL)
+    (case s ^. numChannelsL' of
+      1 -> "luminance"
+      3 -> "rgb"
+      _ -> error $ printf
+        "numChannels must be 1 or 3, but was %d" $
+        s ^. numChannelsL')
+
+  -- showXML s = unlines [
+  --   "<sensor type=\"perspective\">",
+  --   "<float name=\"nearClip\" value=\"10\"/>",
+  --   "<float name=\"farClip\" value=\"2800\"/>",
+  --   "<float name=\"focusDistance\" value=\"1000\"/>",
+  --   printf "<float name=\"fov\" value=\"%f\"/>" $ s ^. fovInDegreesL,
+  --   "",
+  --   "<transform name=\"toWorld\">",
+  --   printf
+  --     "<lookAt origin=\"%s\" target=\"%s\" up=\"%s\"/>"
+  --     (formatVector $ s ^. originL)
+  --     (formatVector $ s ^. targetL)
+  --     (formatVector $ s ^. upL),
+  --   "</transform>",
+  --   "",
+  --   "<sampler type=\"ldsampler\">",
+  --   "<integer name=\"sampleCount\" value=\"64\"/>",
+  --   "</sampler>",
+  --   "",
+  --   "<film type=\"mfilm\">",
+  --   "<string name=\"fileFormat\" value=\"numpy\"/>",
+  --   printf "<integer name=\"width\" value=\"%d\"/>" $ s ^. widthL,
+  --   printf "<integer name=\"height\" value=\"%d\"/>" $ s ^. widthL,
+  --   -- "<string name=\"pixelFormat\" value=\"rgb\"/>",
+  --   printf
+  --     "<string name=\"pixelFormat\" value=\"%s\"/>"
+  --     (case s ^. numChannelsL' of
+  --       1 -> "luminance"
+  --       3 -> "rgb"
+  --       _ -> error $ printf
+  --         "numChannels must be 1 or 3, but was %d" $
+  --         s ^. numChannelsL'),
+  --   "<rfilter type=\"gaussian\"/>",
+  --   "</film>",
+  --   "</sensor>"]
 
 declareLenses [d|
   data View = View {
@@ -94,13 +149,13 @@ declareLenses [d|
   -- happen for rays that don't intersect any scene objects.
   data Rendering = Rendering {
     -- This is the HDR color image.
-    rgb :: Array U DIM3 Double,
+    rgbL :: Array U DIM3 Double,
     -- These are 3D coordinates of each of the pixels in the RGB image.
-    position :: Array U DIM3 Double,
+    positionL :: Array U DIM3 Double,
     -- These is the depth map.
     -- The third dimension is extra, but it is represented as a DIM3
     -- to make the types easier.
-    distance :: Array U DIM3 Double
+    distanceL :: Array U DIM3 Double
   } deriving (Show) |]
 
 makeMitsubaScript :: String -> View -> String
@@ -111,9 +166,9 @@ makeMitsubaScript template v =
     in
       template & replaceIntegrator & replaceSensor
 
-makeSceneDirectory :: FilePath -> String -> IO String
+makeSceneDirectory :: FilePath -> String -> IO (String, String)
 makeSceneDirectory modelDirectory mitsubaScript = do
-  salt <- randomString 16
+  salt <- randomString 8
   let
     directory = joinPath [
       "/tmp",
@@ -125,7 +180,7 @@ makeSceneDirectory modelDirectory mitsubaScript = do
   writeFile
     scriptPath
     mitsubaScript
-  return scriptPath
+  return (directory, scriptPath)
 
 callMitsuba :: FilePath -> FilePath -> IO ()
 callMitsuba scriptPath outPath = do
@@ -138,7 +193,10 @@ callMitsuba scriptPath outPath = do
 makePythonScript :: Int -> String -> String -> String
 makePythonScript numChannels npyPath csvPattern =
   let
-    first = ["import numpy", printf "arr = numpy.load(\"%s\")" npyPath]
+    first = [
+      "import numpy",
+      printf "arr = numpy.load(\"%s\")" npyPath,
+      "if len(arr.shape) == 2: arr = numpy.reshape(arr, (arr.shape[0], arr.shape[1], 1))"]
     save i = printf
       "numpy.savetxt(\"%s\", arr[:, :, %d], delimiter=\",\")"
       (printf csvPattern i :: String)
@@ -152,8 +210,8 @@ loadCSVs numChannels csvPattern = do
   let
     load i = parseFromFile csvFile $ printf csvPattern i
     right i = do
-      Right r <- load i
-      return r
+      Right r' <- load i
+      return r'
   mapM right [0 .. numChannels - 1]
 
 parseRenderingComponent :: [[[String]]] -> Array U DIM3 Double
@@ -175,11 +233,12 @@ renderComponent m v = do
   template <- readFile $ joinPath [m ^. directoryL, m ^. templateL]
   let
     mitsubaScript = makeMitsubaScript template v
-    npyPath = joinPath[m ^. directoryL, "render.npy"]
-    csvPattern = joinPath[m ^. directoryL, "render_%d.csv"]
+  (directory, scriptPath) <- makeSceneDirectory (m ^. directoryL) mitsubaScript
+  let
+    npyPath = joinPath[directory, "render.npy"]
+    csvPattern = joinPath[directory, "render_%d.csv"]
     pythonScript = makePythonScript (v ^. numChannelsL) npyPath csvPattern
-    pyPath = joinPath[m ^. directoryL, "npy_to_csvs.py"]
-  scriptPath <- makeSceneDirectory (m ^. directoryL) mitsubaScript
+    pyPath = joinPath[directory, "npy_to_csvs.py"]
   callMitsuba scriptPath npyPath
   writeFile pyPath pythonScript
   runShell $ unwords ["/usr/bin/python", pyPath]
@@ -189,15 +248,33 @@ renderComponent m v = do
   print $ show $ length $ head csvs
   csvs & head & head & length & show & print
   return $ parseRenderingComponent csvs
---
--- showRendering :: Rendering -> String -> IO()
--- showRendering (Rendering rgb) pattern = do
---   let
---     fromXY x y = PixelRGBF
---       (double2Float $ index rgb (Z :. y :. x :. 0))
---       (double2Float $ index rgb (Z :. y :. x :. 1))
---       (double2Float $ index rgb (Z :. y :. x :. 2))
---     Z :. width :. _ :. 3 = extent rgb
---     image = ImageRGBF $ generateImage fromXY width width
---   -- saveRadianceImage (printf pattern "rgb") image
---   savePngImage (printf pattern "rgb") image
+
+render :: Model -> View -> IO Rendering
+render m v = do
+  let
+    rgb :: View
+    rgb = set numChannelsL 3 $ set (sensorL . numChannelsL') 3 $ set integratorL RGB v
+    position :: View
+    position = set numChannelsL 3 $ set (sensorL . numChannelsL') 3 $ set integratorL Position v
+    distance :: View
+    distance = set numChannelsL 1 $ set (sensorL . numChannelsL') 1 $ set integratorL Distance v
+  putStrLn $ show rgb
+  r' <- renderComponent m rgb
+  putStrLn $ show position
+  p <- renderComponent m position
+  putStrLn $ show distance
+  d <- renderComponent m distance
+  return $ Rendering r' p d
+
+showRendering :: Rendering -> String -> IO()
+showRendering r' pattern = do
+  let
+    rgb = r' ^. rgbL
+    fromXY x y = PixelRGBF
+      (double2Float $ index rgb (Z :. y :. x :. 0))
+      (double2Float $ index rgb (Z :. y :. x :. 1))
+      (double2Float $ index rgb (Z :. y :. x :. 2))
+    Z :. width :. _ :. 3 = extent rgb
+    image = ImageRGBF $ generateImage fromXY width width
+  -- saveRadianceImage (printf pattern "rgb") image
+  savePngImage (printf pattern "rgb") image

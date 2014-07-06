@@ -21,12 +21,14 @@ main = do
       (fromListUnboxed (Z :. 3) [278.0, 273.0, -799.0])
       (fromListUnboxed (Z :. 3) [0.0, 1.0, 0.0])
       128
+      3
+      128
     integrator = RGB
     v = View 3 integrator s
     m = Model "data/cbox" "cbox.xml"
-  rc <- renderComponent m v
-  -- showRendering rendering "/tmp/rendering_%s.hdr"
-  -- showRendering rendering "/tmp/rendering_%s.png"
-  -- print rendering
-  -- callMitsuba renderParameters output
+  -- putStrLn testString
+
+  r <- render m v
+  showRendering r "/tmp/rendering_%s.png"
+
   putStrLn "Done"
