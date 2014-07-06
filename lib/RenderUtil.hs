@@ -11,7 +11,7 @@ import           System.FilePath.Posix
 import           SystemUtil
 import           Text.Parsec.String
 import           Text.Printf
-import           Text.RawString.QQ
+import RawStrings
 
 class ShowXML a where
   showXML :: a -> String
@@ -21,16 +21,8 @@ data Integrator = RGB | Position | Distance
 
 instance ShowXML Integrator where
   showXML RGB = "<integrator type=\"path\"/>"
-  showXML Position = [r|
-<integrator type="field">
-  <string name="field" value="position"/>
-</integrator>
-  |]
-  showXML Distance = [r|
-<integrator type="field">
-  <string name="field" value="distance"/>
-</integrator>
-  |]
+  showXML Position = positionString
+  showXML Distance = distanceString
 
 declareLenses [d|
   data Sensor = Sensor {
@@ -50,36 +42,9 @@ formatVector vector = printf
   (index vector (Z :. 1))
   (index vector (Z :. 2))
 
-testString :: String
-testString = [r|This is line one.
-This is line two.
-|]
-
 instance ShowXML Sensor where
   showXML s = printf
-    [r|
-<sensor type="perspective">
-  <float name="nearClip" value="10"/>
-  <float name="farClip" value="2800"/>
-  <float name="focusDistance" value="1000"/>
-  <float name="fov" value="%f"/>
-
-  <transform name="toWorld">
-    <lookAt origin="%s" target="%s" up="%s"/>
-  </transform>
-
-  <sampler type="ldsampler">
-    <integer name="sampleCount" value="%d"/>
-  </sampler>
-
-  <film type="mfilm">
-    <string name="fileFormat" value="numpy"/>
-    <integer name="width" value="%d"/>
-    <integer name="height" value="%d"/>
-    <string name="pixelFormat" value="%s"/>
-    <rfilter type="gaussian"/>
-  </film>
-</sensor>|]
+    sensorString
     (s ^. fovInDegreesL)
     (formatVector $ s ^. originL)
     (formatVector $ s ^. targetL)
@@ -93,42 +58,6 @@ instance ShowXML Sensor where
       _ -> error $ printf
         "numChannels must be 1 or 3, but was %d" $
         s ^. numChannelsL')
-
-  -- showXML s = unlines [
-  --   "<sensor type=\"perspective\">",
-  --   "<float name=\"nearClip\" value=\"10\"/>",
-  --   "<float name=\"farClip\" value=\"2800\"/>",
-  --   "<float name=\"focusDistance\" value=\"1000\"/>",
-  --   printf "<float name=\"fov\" value=\"%f\"/>" $ s ^. fovInDegreesL,
-  --   "",
-  --   "<transform name=\"toWorld\">",
-  --   printf
-  --     "<lookAt origin=\"%s\" target=\"%s\" up=\"%s\"/>"
-  --     (formatVector $ s ^. originL)
-  --     (formatVector $ s ^. targetL)
-  --     (formatVector $ s ^. upL),
-  --   "</transform>",
-  --   "",
-  --   "<sampler type=\"ldsampler\">",
-  --   "<integer name=\"sampleCount\" value=\"64\"/>",
-  --   "</sampler>",
-  --   "",
-  --   "<film type=\"mfilm\">",
-  --   "<string name=\"fileFormat\" value=\"numpy\"/>",
-  --   printf "<integer name=\"width\" value=\"%d\"/>" $ s ^. widthL,
-  --   printf "<integer name=\"height\" value=\"%d\"/>" $ s ^. widthL,
-  --   -- "<string name=\"pixelFormat\" value=\"rgb\"/>",
-  --   printf
-  --     "<string name=\"pixelFormat\" value=\"%s\"/>"
-  --     (case s ^. numChannelsL' of
-  --       1 -> "luminance"
-  --       3 -> "rgb"
-  --       _ -> error $ printf
-  --         "numChannels must be 1 or 3, but was %d" $
-  --         s ^. numChannelsL'),
-  --   "<rfilter type=\"gaussian\"/>",
-  --   "</film>",
-  --   "</sensor>"]
 
 declareLenses [d|
   data View = View {
@@ -183,7 +112,7 @@ makeSceneDirectory modelDirectory mitsubaScript = do
   return (directory, scriptPath)
 
 callMitsuba :: FilePath -> FilePath -> IO ()
-callMitsuba scriptPath outPath = do
+callMitsuba scriptPath outPath =
   runShell $ unwords [
     "/usr/bin/mitsuba",
     scriptPath,
@@ -258,11 +187,11 @@ render m v = do
     position = set numChannelsL 3 $ set (sensorL . numChannelsL') 3 $ set integratorL Position v
     distance :: View
     distance = set numChannelsL 1 $ set (sensorL . numChannelsL') 1 $ set integratorL Distance v
-  putStrLn $ show rgb
+  print rgb
   r' <- renderComponent m rgb
-  putStrLn $ show position
+  print position
   p <- renderComponent m position
-  putStrLn $ show distance
+  print distance
   d <- renderComponent m distance
   return $ Rendering r' p d
 

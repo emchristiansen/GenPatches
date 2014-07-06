@@ -1,14 +1,14 @@
 import           Data.Array.Repa    hiding (extract, map, (++))
 -- import           Text.RawString.QQ
-import           System.Process
-import           Text.Printf
+-- import           System.Process
+-- import           Text.Printf
 -- import           Text.XML.Light
-import           Data.CSV
+-- import           Data.CSV
 -- import Text.Parsec
-import           Codec.Picture
-import           Control.Lens       hiding (index)
-import           GHC.Float
-import           Text.Parsec.String
+-- import           Codec.Picture
+-- import           Control.Lens       hiding (index)
+-- import           GHC.Float
+-- import           Text.Parsec.String
 import RenderUtil
 -- import Control.Lens.TH
 
