@@ -87,6 +87,7 @@ library
     RenderUtil
     SystemUtil
     RawStrings
+    Score
 
   default-language:
     Haskell2010

@@ -195,15 +195,27 @@ render m v = do
   d <- renderComponent m distance
   return $ Rendering r' p d
 
-showRendering :: Rendering -> String -> IO()
-showRendering r' pattern = do
+rgbToImage :: Array U DIM3 Double -> Image PixelRGBF
+rgbToImage rgb =
   let
-    rgb = r' ^. rgbL
     fromXY x y = PixelRGBF
       (double2Float $ index rgb (Z :. y :. x :. 0))
       (double2Float $ index rgb (Z :. y :. x :. 1))
       (double2Float $ index rgb (Z :. y :. x :. 2))
     Z :. width :. _ :. 3 = extent rgb
-    image = ImageRGBF $ generateImage fromXY width width
-  -- saveRadianceImage (printf pattern "rgb") image
-  savePngImage (printf pattern "rgb") image
+  in
+    generateImage fromXY width width
+
+distanceToImage :: Array U DIM3 Double -> Image PixelF
+distanceToImage distance =
+  let
+    fromXY x y = (double2Float $ index distance (Z :. y :. x :. 0))
+    Z :. width :. _ :. 1 = extent distance
+  in
+    generateImage fromXY width width
+
+showRendering :: Rendering -> String -> IO()
+showRendering r pattern = do
+  savePngImage (printf pattern "rgb") $ ImageRGBF $ rgbToImage $ r ^. rgbL
+  savePngImage (printf pattern "distance") $ ImageYF $ distanceToImage $
+    r ^. distanceL
