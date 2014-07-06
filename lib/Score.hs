@@ -31,4 +31,9 @@ uniqueness otherRenderings r =
         sqrt $ sumAllS $ R.map (\x -> x * x) difference
     distances = map distance otherRenderings
   in
-    minimum distances
+    minimum $ 1.0 : distances
+
+score :: [Rendering] -> Rendering -> Double
+score otherRenderings r = if quality r < 0.5
+  then 0.0
+  else quality r * uniqueness otherRenderings r
