@@ -173,9 +173,9 @@ renderComponent m v = do
   runShell $ unwords ["/usr/bin/python", pyPath]
   csvs <- loadCSVs (v ^. numChannelsL) csvPattern
 
-  print $ show $ length csvs
-  print $ show $ length $ head csvs
-  csvs & head & head & length & show & print
+  -- print $ show $ length csvs
+  -- print $ show $ length $ head csvs
+  -- csvs & head & head & length & show & print
   return $ parseRenderingComponent csvs
 
 render :: Model -> View -> IO Rendering
@@ -187,11 +187,12 @@ render m v = do
     position = set numChannelsL 3 $ set (sensorL . numChannelsL') 3 $ set integratorL Position v
     distance :: View
     distance = set numChannelsL 1 $ set (sensorL . numChannelsL') 1 $ set integratorL Distance v
-  print rgb
+  putStrLn "\nRendering all 3 components."
+  -- print rgb
   r' <- renderComponent m rgb
-  print position
+  -- print position
   p <- renderComponent m position
-  print distance
+  -- print distance
   d <- renderComponent m distance
   return $ Rendering r' p d
 
@@ -216,6 +217,11 @@ distanceToImage distance =
 
 showRendering :: Rendering -> String -> IO()
 showRendering r pattern = do
-  savePngImage (printf pattern "rgb") $ ImageRGBF $ rgbToImage $ r ^. rgbL
-  savePngImage (printf pattern "distance") $ ImageYF $ distanceToImage $
+  let
+    rgb = printf pattern "rgb"
+    distance = printf pattern "distance"
+  putStrLn $ printf "Writing %s" rgb
+  savePngImage rgb $ ImageRGBF $ rgbToImage $ r ^. rgbL
+  putStrLn $ printf "Writing %s" distance
+  savePngImage distance $ ImageYF $ distanceToImage $
     r ^. distanceL

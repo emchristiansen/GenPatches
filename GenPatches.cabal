@@ -106,11 +106,15 @@ library
     , random
     , normaldistribution
     , xml
+    , shelly
+    , text
 
   default-extensions:
     TemplateHaskell
     RankNTypes
     QuasiQuotes
+    -- OverloadedStrings
+    -- ExtendedDefaultRules
 
   ghc-options:
     -Wall

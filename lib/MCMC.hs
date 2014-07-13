@@ -54,21 +54,26 @@ perturbView v = do
 
 getGoodRendering :: Model -> View -> IO (View, Rendering)
 getGoodRendering m v = do
-  v' <- perturbView v
+  -- v' <- perturbView v
+  v' <- return v
   r <- render m v'
   let
     s = score [] r
+  putStrLn $ printf "Score was %f" s
+  putStrLn $ printf "Quality was %f" $ quality r
+  rs <- randomString 8
+  showRendering r $ printf "/tmp/debug_rendering_%s_%s.png" rs "%s"
   if s > 0.6
   then do
-    print "Got a good rendering."
+    putStrLn "Got a good rendering."
     return (v', r)
   else do
-    print "Bad rendering, retrying."
+    putStrLn "Bad rendering, retrying."
     getGoodRendering m v'
 
 mcmc :: Model -> View -> IO ()
 mcmc m v = do
    (v', r) <- getGoodRendering m v
    rs <- randomString 8
-   showRendering r $ printf "/tmp/mcmc_rendering_%s.png" rs
+   showRendering r $ printf "/tmp/mcmc_rendering_%s_%s.png" rs "%s"
    mcmc m v'

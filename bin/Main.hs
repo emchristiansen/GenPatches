@@ -10,7 +10,7 @@ import           Data.Array.Repa    hiding (extract, map, (++))
 -- import           GHC.Float
 -- import           Text.Parsec.String
 import RenderUtil
-import Control.Lens
+-- import Control.Lens
 import MCMC
 
 main :: IO()
@@ -27,6 +27,8 @@ main = do
     integrator = RGB
     v = View 3 integrator s
     m = Model "data/cbox" "cbox.xml"
+  mcmc m v
+
   -- s' <- perturb s
   -- print s
   -- print s'
@@ -35,6 +37,5 @@ main = do
   -- print $ r ^. distanceL
   -- showRendering r "/tmp/rendering_%s.png"
 
-  mcmc m v
 
   putStrLn "Done"
