@@ -108,11 +108,16 @@ library
     , xml
     , shelly
     , text
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , transformers
 
   default-extensions:
     TemplateHaskell
     RankNTypes
     QuasiQuotes
+    ScopedTypeVariables
     -- OverloadedStrings
     -- ExtendedDefaultRules
 
@@ -143,6 +148,10 @@ executable GenPatches
     , JuicyPixels
     , lens
     , xml
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , transformers
 
   default-extensions:
     TemplateHaskell

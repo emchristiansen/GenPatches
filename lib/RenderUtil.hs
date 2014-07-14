@@ -12,12 +12,16 @@ import           SystemUtil
 import           Text.Parsec.String
 import           Text.Printf
 import RawStrings
+-- import           Control.Monad.IO.Class  (liftIO)
+-- import           Database.Persist
+-- import           Database.Persist.Sqlite (PersistFieldSql)
+-- import           Database.Persist.TH
 
 class ShowXML a where
   showXML :: a -> String
 
 data Integrator = RGB | Position | Distance
-  deriving (Show)
+  deriving (Show, Read)
 
 instance ShowXML Integrator where
   showXML RGB = "<integrator type=\"path\"/>"
@@ -33,7 +37,7 @@ declareLenses [d|
     widthL :: Int,
     numChannelsL' :: Int,
     sampleCountL :: Int
-  } deriving (Show) |]
+  } deriving (Show, Read) |]
 
 formatVector :: Array U DIM1 Double -> String
 formatVector vector = printf
@@ -64,13 +68,13 @@ declareLenses [d|
     numChannelsL :: Int,
     integratorL :: Integrator,
     sensorL :: Sensor
-  } deriving (Show) |]
+  } deriving (Show, Read) |]
 
 declareLenses [d|
   data Model = Model {
     directoryL :: FilePath,
     templateL :: String
-  } deriving (Show) |]
+  } deriving (Show, Read) |]
 
 declareLenses [d|
   -- A Rendering is the direct output of a Mitsuba rendering of a scene.
@@ -85,7 +89,7 @@ declareLenses [d|
     -- The third dimension is extra, but it is represented as a DIM3
     -- to make the types easier.
     distanceL :: Array U DIM3 Double
-  } deriving (Show) |]
+  } deriving (Show, Read) |]
 
 makeMitsubaScript :: String -> View -> String
 makeMitsubaScript template v =
@@ -219,9 +223,9 @@ showRendering :: Rendering -> String -> IO()
 showRendering r pattern = do
   let
     rgb = printf pattern "rgb"
-    distance = printf pattern "distance"
+    -- distance = printf pattern "distance"
   putStrLn $ printf "Writing %s" rgb
   savePngImage rgb $ ImageRGBF $ rgbToImage $ r ^. rgbL
-  putStrLn $ printf "Writing %s" distance
-  savePngImage distance $ ImageYF $ distanceToImage $
-    r ^. distanceL
+  -- putStrLn $ printf "Writing %s" distance
+  -- savePngImage distance $ ImageYF $ distanceToImage $
+    -- r ^. distanceL

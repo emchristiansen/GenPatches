@@ -12,6 +12,28 @@ import           Data.Array.Repa    hiding (extract, map, (++))
 import RenderUtil
 -- import Control.Lens
 import MCMC
+import           Control.Monad.IO.Class  (liftIO)
+import           Database.Persist
+import           Database.Persist.Sqlite
+import           Database.Persist.TH
+
+-- share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+-- Person
+    -- name String
+    -- age Int Maybe
+--     deriving Show
+-- BlogPost
+--     title String
+--     authorId PersonId
+--     deriving Show
+-- |]
+
+-- share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+-- MVR
+  -- model Model
+  -- view View
+  -- rendering Rendering
+-- |]
 
 main :: IO()
 main = do
@@ -21,13 +43,13 @@ main = do
       (fromListUnboxed (Z :. 3) [278.0, 273.0, -800.0])
       (fromListUnboxed (Z :. 3) [278.0, 273.0, -799.0])
       (fromListUnboxed (Z :. 3) [0.0, 1.0, 0.0])
-      32
+      256
       3
       128
     integrator = RGB
     v = View 3 integrator s
     m = Model "data/cbox" "cbox.xml"
-  mcmc m v
+  mcmc m v []
 
   -- s' <- perturb s
   -- print s
@@ -36,6 +58,5 @@ main = do
   -- r <- render m v
   -- print $ r ^. distanceL
   -- showRendering r "/tmp/rendering_%s.png"
-
 
   putStrLn "Done"
