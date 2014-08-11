@@ -12,10 +12,13 @@ import           Data.Array.Repa    hiding (extract, map, (++))
 import RenderUtil
 -- import Control.Lens
 import MCMC
+import SystemUtil
 import           Control.Monad.IO.Class  (liftIO)
 import           Database.Persist
 import           Database.Persist.Sqlite
 import           Database.Persist.TH
+import Pipes
+import qualified Pipes.Prelude as P
 
 -- share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 -- Person
@@ -49,7 +52,13 @@ main = do
     integrator = RGB
     v = View 3 integrator s
     m = Model "data/cbox" "cbox.xml"
-  mcmc m v []
+  -- mcmc m v []
+  makeDirectory outputRoot
+  makeDirectory renderingRoot
+  makeDirectory mvrRoot
+
+  let mvrs = mcmc2 m v []
+  runEffect $ for (mvrs >-> P.take 3) (lift . saveMVR)
 
   -- s' <- perturb s
   -- print s

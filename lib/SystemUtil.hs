@@ -29,6 +29,9 @@ runShell command = do
 copyDirectory :: FilePath -> FilePath -> IO ()
 copyDirectory from to = runShell $ printf "cp -r %s %s" from to
 
+makeDirectory :: FilePath -> IO ()
+makeDirectory dir = runShell $ printf "mkdir -p %s" dir
+
 randomString :: Int -> IO String
 randomString length' = do
   let chars = ['a' .. 'z'] ++ ['0' .. '9']

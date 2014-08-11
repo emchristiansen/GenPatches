@@ -112,12 +112,14 @@ library
     , persistent-sqlite
     , persistent-template
     , transformers
+    , pipes
 
   default-extensions:
     TemplateHaskell
     RankNTypes
     QuasiQuotes
     ScopedTypeVariables
+    BangPatterns
     -- OverloadedStrings
     -- ExtendedDefaultRules
 
@@ -152,6 +154,8 @@ executable GenPatches
     , persistent-sqlite
     , persistent-template
     , transformers
+    , pipes
+
 
   default-extensions:
     TemplateHaskell

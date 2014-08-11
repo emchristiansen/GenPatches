@@ -2,6 +2,7 @@ module MCMC where
 
 import RenderUtil
 import Data.Random.Normal
+import           System.FilePath.Posix
 import Data.Array.Repa hiding (map)
 import qualified Data.Array.Repa as R
 import Control.Monad
@@ -10,6 +11,8 @@ import Score
 import Text.Printf
 import SystemUtil
 import Control.Exception
+import Control.Monad (unless)
+import Pipes
 -- import System.IO.Error
 
 makeUnitLength :: Array U DIM1 Double -> Array U DIM1 Double
@@ -109,7 +112,35 @@ getGoodRendering m v = do
     putStrLn "Bad rendering, retrying."
     getGoodRendering m v
 
-data MVC = MVC Model View Rendering deriving (Show, Read)
+data MVR = MVR Model View Rendering deriving (Show, Read)
+
+outputRoot :: FilePath
+outputRoot = "/home/eric/Downloads/mcmc"
+
+renderingRoot :: FilePath
+renderingRoot = joinPath [outputRoot, "rendering"]
+
+mvrRoot :: FilePath
+mvrRoot = joinPath [outputRoot, "mvr"]
+
+saveMVR :: MVR -> IO ()
+saveMVR (MVR m v r) = do
+  rs <- randomString 8
+  showRendering r $ joinPath [renderingRoot, printf "rendering_%s_%s.png" rs "%s"]
+  writeFile (joinPath [mvrRoot, printf "mvc_%s.hss" rs]) $ show $ MVR m v r
+
+mcmc2 :: Model -> View -> [Rendering] -> Producer MVR IO ()
+mcmc2 !m !v !otherRenderings = do
+   lift $ putStrLn $ printf "Number of generated renderings: %d" $ length otherRenderings
+   (v', r') <- lift $ getGoodRendering m v
+   (v'', r'') <- lift $ getGoodRendering m v
+   let
+     (vBetter, rBetter) =
+       if score otherRenderings r' >= score otherRenderings r''
+       then (v', r')
+       else (v'', r'')
+   yield $! MVR m vBetter rBetter
+   mcmc2 m vBetter $ rBetter : otherRenderings
 
 mcmc :: Model -> View -> [Rendering] -> IO ()
 mcmc m v otherRenderings = do
@@ -123,5 +154,5 @@ mcmc m v otherRenderings = do
        else (v'', r'')
    rs <- randomString 8
    showRendering rBetter $ printf "/tmp/mcmc/rendering/rendering_%s_%s.png" rs "%s"
-   writeFile (printf "/tmp/mcmc/mvc/mvc_%s.hss" rs) $ show $ MVC m vBetter rBetter
+   writeFile (printf "/tmp/mcmc/mvc/mvc_%s.hss" rs) $ show $ MVR m vBetter rBetter
    mcmc m vBetter $ rBetter : otherRenderings

@@ -1,4 +1,6 @@
-run() {
+#! /bin/zsh
+
+function run() {
   #cabal clean &&
   sh configure.sh &&
   cabal build
