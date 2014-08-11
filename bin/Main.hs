@@ -19,6 +19,7 @@ import           Database.Persist.Sqlite
 import           Database.Persist.TH
 import Pipes
 import qualified Pipes.Prelude as P
+import qualified Data.Sequence as Seq
 
 -- share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 -- Person
@@ -57,8 +58,8 @@ main = do
   makeDirectory renderingRoot
   makeDirectory mvrRoot
 
-  let mvrs = mcmc2 m v []
-  runEffect $ for (mvrs >-> P.take 3) (lift . saveMVR)
+  let mvrs = mcmc2 m v Seq.empty
+  runEffect $ for (mvrs >-> P.take 100) (lift . saveMVR)
 
   -- s' <- perturb s
   -- print s

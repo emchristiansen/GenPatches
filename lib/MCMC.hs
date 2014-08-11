@@ -16,6 +16,9 @@ import Pipes
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 -- import qualified Data.ByteString.Char8 as ByteString
 import Codec.Compression.GZip
+import qualified Data.Sequence as Seq
+-- import Data.Sequence ((<|))
+import qualified Data.Foldable as Foldable
 -- import System.IO.Error
 
 makeUnitLength :: Array U DIM1 Double -> Array U DIM1 Double
@@ -136,18 +139,18 @@ saveMVR (MVR m v r) = do
   showRendering r $ joinPath [renderingRoot, printf "rendering_%s_%s.png" rs "%s"]
   writeCompressed (joinPath [mvrRoot, printf "mvc_%s.hss" rs]) $ show $ MVR m v r
 
-mcmc2 :: Model -> View -> [Rendering] -> Producer MVR IO ()
+mcmc2 :: Model -> View -> Seq.Seq Rendering -> Producer MVR IO ()
 mcmc2 !m !v !otherRenderings = do
-   lift $ putStrLn $ printf "Number of generated renderings: %d" $ length otherRenderings
+   lift $ putStrLn $ printf "Number of generated renderings: %d" $ Seq.length otherRenderings
    (v', r') <- lift $ getGoodRendering m v
    (v'', r'') <- lift $ getGoodRendering m v
    let
      (vBetter, rBetter) =
-       if score otherRenderings r' >= score otherRenderings r''
+       if score (Foldable.toList otherRenderings) r' >= score (Foldable.toList otherRenderings) r''
        then (v', r')
        else (v'', r'')
    yield $! MVR m vBetter rBetter
-   mcmc2 m vBetter $ rBetter : otherRenderings
+   mcmc2 m vBetter $ rBetter Seq.<| otherRenderings
 
 mcmc :: Model -> View -> [Rendering] -> IO ()
 mcmc m v otherRenderings = do

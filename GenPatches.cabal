@@ -116,6 +116,7 @@ library
     , binary
     , bytestring
     , zlib
+    , containers
 
   default-extensions:
     TemplateHaskell
@@ -160,6 +161,7 @@ executable GenPatches
     , persistent-template
     , transformers
     , pipes
+    , containers
 
 
   default-extensions:
