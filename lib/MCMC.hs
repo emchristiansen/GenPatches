@@ -13,6 +13,9 @@ import SystemUtil
 import Control.Exception
 import Control.Monad (unless)
 import Pipes
+import qualified Data.ByteString.Lazy.Char8 as ByteString
+-- import qualified Data.ByteString.Char8 as ByteString
+import Codec.Compression.GZip
 -- import System.IO.Error
 
 makeUnitLength :: Array U DIM1 Double -> Array U DIM1 Double
@@ -123,11 +126,15 @@ renderingRoot = joinPath [outputRoot, "rendering"]
 mvrRoot :: FilePath
 mvrRoot = joinPath [outputRoot, "mvr"]
 
+writeCompressed :: FilePath -> String -> IO ()
+writeCompressed path contents =
+  ByteString.writeFile path (compress $ ByteString.pack contents)
+
 saveMVR :: MVR -> IO ()
 saveMVR (MVR m v r) = do
   rs <- randomString 8
   showRendering r $ joinPath [renderingRoot, printf "rendering_%s_%s.png" rs "%s"]
-  writeFile (joinPath [mvrRoot, printf "mvc_%s.hss" rs]) $ show $ MVR m v r
+  writeCompressed (joinPath [mvrRoot, printf "mvc_%s.hss" rs]) $ show $ MVR m v r
 
 mcmc2 :: Model -> View -> [Rendering] -> Producer MVR IO ()
 mcmc2 !m !v !otherRenderings = do

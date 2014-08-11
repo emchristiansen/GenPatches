@@ -113,6 +113,9 @@ library
     , persistent-template
     , transformers
     , pipes
+    , binary
+    , bytestring
+    , zlib
 
   default-extensions:
     TemplateHaskell
@@ -120,6 +123,8 @@ library
     QuasiQuotes
     ScopedTypeVariables
     BangPatterns
+    DeriveGeneric
+    FlexibleInstances
     -- OverloadedStrings
     -- ExtendedDefaultRules
 

@@ -12,10 +12,12 @@ import           SystemUtil
 import           Text.Parsec.String
 import           Text.Printf
 import RawStrings
+import Data.Binary
 -- import           Control.Monad.IO.Class  (liftIO)
 -- import           Database.Persist
 -- import           Database.Persist.Sqlite (PersistFieldSql)
 -- import           Database.Persist.TH
+import GHC.Generics (Generic)
 
 class ShowXML a where
   showXML :: a -> String
