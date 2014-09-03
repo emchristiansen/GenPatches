@@ -89,6 +89,7 @@ library
     RawStrings
     Score
     MCMC
+    SpatialIndex
 
   default-language:
     Haskell2010
@@ -117,6 +118,9 @@ library
     , bytestring
     , zlib
     , containers
+    , KdTree
+    , QuickCheck
+    , vector
 
   default-extensions:
     TemplateHaskell
@@ -163,6 +167,45 @@ executable GenPatches
     , pipes
     , containers
 
+
+  default-extensions:
+    TemplateHaskell
+    RankNTypes
+
+  ghc-options:
+    -Wall
+    -auto-all
+    -caf-all
+
+executable MakeNN
+  hs-source-dirs:
+    bin
+
+  main-is:
+    NN.hs
+
+  default-language:
+    Haskell2010
+
+  build-depends:
+      base >= 4 && < 5
+    , GenPatches
+    , repa
+    -- , repa-algorithms
+    , raw-strings-qq
+    , MissingH
+    , parsec
+    , process
+    , JuicyPixels
+    , lens
+    , xml
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , transformers
+    , pipes
+    , containers
+    , KdTree
 
   default-extensions:
     TemplateHaskell

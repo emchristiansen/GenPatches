@@ -120,18 +120,6 @@ getGoodRendering m v = do
 
 data MVR = MVR Model View Rendering deriving (Show, Read)
 
-outputRoot :: FilePath
-outputRoot = "/home/eric/Downloads/mcmc"
-
-renderingRoot :: FilePath
-renderingRoot = joinPath [outputRoot, "rendering"]
-
-mvrRoot :: FilePath
-mvrRoot = joinPath [outputRoot, "mvr"]
-
-writeCompressed :: FilePath -> String -> IO ()
-writeCompressed path contents =
-  ByteString.writeFile path (compress $ ByteString.pack contents)
 
 saveMVR :: MVR -> IO ()
 saveMVR (MVR m v r) = do

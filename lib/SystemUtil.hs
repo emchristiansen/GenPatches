@@ -5,6 +5,13 @@ import           Control.Monad
 -- import           System.Process
 import           System.Random
 import           Text.Printf
+import qualified Data.ByteString.Lazy.Char8 as ByteString
+-- import qualified Data.ByteString.Char8 as ByteString
+import Codec.Compression.GZip
+import           System.FilePath.Posix
+import qualified Data.Sequence as Seq
+-- import Data.Sequence ((<|))
+import qualified Data.Foldable as Foldable
 import Shelly hiding (FilePath, command)
 -- import qualified Shelly as S
 import qualified Data.Text as T
@@ -37,3 +44,21 @@ randomString length' = do
   let chars = ['a' .. 'z'] ++ ['0' .. '9']
   indices' <- replicateM length' $ randomRIO (0, length chars - 1)
   return $ map (chars !!) indices'
+
+outputRoot :: FilePath
+outputRoot = "/home/eric/Downloads/mcmc"
+
+renderingRoot :: FilePath
+renderingRoot = joinPath [outputRoot, "rendering"]
+
+mvrRoot :: FilePath
+mvrRoot = joinPath [outputRoot, "mvr"]
+
+writeCompressed :: Show a => FilePath -> a -> IO ()
+writeCompressed path contents =
+  ByteString.writeFile path (compress $ ByteString.pack $ show contents)
+
+readCompressed :: Read a => FilePath -> IO a
+readCompressed path = do
+  bytes <- ByteString.readFile path
+  return $ (read . ByteString.unpack . decompress) bytes
