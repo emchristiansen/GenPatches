@@ -8,11 +8,16 @@ import RenderUtil
 import qualified Data.Vector as V
 import           Control.Lens
 
-type Point3D = Array U DIM1 Double
+-- type Point3D = Array U DIM1 Double
 
 type Image = Array U DIM3 Double
 
-data IndexedPatch = IndexedPatch Point3D Image
+data IndexedPatch = IndexedPatch Point3d Image
+
+instance Point IndexedPatch where
+  dimension (IndexedPatch p _) = dimension p
+  coord i (IndexedPatch p _) = coord i p
+  dist2 (IndexedPatch p0 _) (IndexedPatch p1 _) = dist2 p0 p1
 
 getPatches :: Int -> MVR -> V.Vector IndexedPatch
 getPatches patchWidth (MVR _ _ r) = V.fromList $ do
@@ -25,10 +30,14 @@ getPatches patchWidth (MVR _ _ r) = V.fromList $ do
     columnCenter = column + patchWidth `div` 2
     xyz :: Array U DIM1 Double
     xyz = computeS $ (r ^. positionL) `R.slice` (Any :. rowCenter :. columnCenter :. All)
+    point = Point3d
+      (xyz `R.linearIndex` 0)
+      (xyz `R.linearIndex` 1)
+      (xyz `R.linearIndex` 2)
     image :: Array U DIM3 Double
     rgbFull :: Array U DIM3 Double
     rgbFull = r ^. rgbL
     image = computeS $ fromFunction
       (Z :. patchWidth :. patchWidth :. 3)
       (\(Z :. r :. c :. z) -> rgbFull R.! (Z :. r + row :. c + column :. z))
-  return $ IndexedPatch xyz image
+  return $ IndexedPatch point image
