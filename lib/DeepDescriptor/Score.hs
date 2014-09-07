@@ -1,9 +1,10 @@
-module Score where
+module DeepDescriptor.Score where
 
-import RenderUtil
 import           Data.Array.Repa       hiding (extract, map, (++))
 import qualified Data.Array.Repa as R
 import Control.Lens
+
+import DeepDescriptor.Render
 
 getMask :: Rendering -> Array U DIM3 Bool
 getMask r = computeS $ R.map (\d -> d >= 1 && d <= 2800) $ r ^. distanceL

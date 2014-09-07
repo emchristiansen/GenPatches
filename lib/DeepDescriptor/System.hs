@@ -1,4 +1,4 @@
-module SystemUtil where
+module DeepDescriptor.System where
 
 import qualified Control.Monad as CM
 import qualified System.Random as SR
@@ -40,7 +40,7 @@ mvrRoot = SFP.joinPath [outputRoot, "mvr"]
 
 writeCompressed :: Show a => FilePath -> a -> IO ()
 writeCompressed path contents =
-  DBLC.writeFile path (CCG.compress $ DBLC.pack $ show contents)
+  DBLC.writeFile path $ CCG.compress $ DBLC.pack $ show contents
 
 readCompressed :: Read a => FilePath -> IO a
 readCompressed path = do

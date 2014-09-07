@@ -1,23 +1,18 @@
-module RenderUtil where
+module DeepDescriptor.Render where
 
-import           Codec.Picture
-import           Control.Exception
-import           Control.Lens          hiding (index)
-import           Data.Array.Repa       hiding (extract, map, (++))
-import           Data.CSV
-import           Data.String.Utils
-import           GHC.Float
-import           System.FilePath.Posix
-import           SystemUtil
-import           Text.Parsec.String
-import           Text.Printf
-import RawStrings
-import Data.Binary
--- import           Control.Monad.IO.Class  (liftIO)
--- import           Database.Persist
--- import           Database.Persist.Sqlite (PersistFieldSql)
--- import           Database.Persist.TH
-import GHC.Generics (Generic)
+import qualified Codec.Picture as CP
+import qualified Control.Exception as CE
+import qualified Control.Lens as CL
+import qualified Data.Array.Repa as DAR
+import qualified Data.CSV as DC
+import qualified Data.String.Utils as DSU
+import qualified GHC.Float as GF
+import qualified System.FilePath.Posix as SFP
+import qualified Text.Parsec.String as TPS
+import qualified Text.Printf as TP
+
+import DeepDescriptor.RawStrings
+import DeepDescriptor.System
 
 class ShowXML a where
   showXML :: a -> String
@@ -30,88 +25,88 @@ instance ShowXML Integrator where
   showXML Position = positionString
   showXML Distance = distanceString
 
-declareLenses [d|
+CL.declareLenses [d|
   data Sensor = Sensor {
     fovInDegreesL :: Double,
-    originL :: Array U DIM1 Double,
-    targetL :: Array U DIM1 Double,
-    upL :: Array U DIM1 Double,
+    originL :: DAR.Array DAR.U DAR.DIM1 Double,
+    targetL :: DAR.Array DAR.U DAR.DIM1 Double,
+    upL :: DAR.Array DAR.U DAR.DIM1 Double,
     widthL :: Int,
     numChannelsL' :: Int,
     sampleCountL :: Int
   } deriving (Show, Read) |]
 
-formatVector :: Array U DIM1 Double -> String
-formatVector vector = printf
+formatVector :: DAR.Array DAR.U DAR.DIM1 Double -> String
+formatVector vector = TP.printf
   "%f,%f,%f"
-  (index vector (Z :. 0))
-  (index vector (Z :. 1))
-  (index vector (Z :. 2))
+  (DAR.index vector (DAR.Z DAR.:. 0))
+  (DAR.index vector (DAR.Z DAR.:. 1))
+  (DAR.index vector (DAR.Z DAR.:. 2))
 
 instance ShowXML Sensor where
-  showXML s = printf
+  showXML s = TP.printf
     sensorString
-    (s ^. fovInDegreesL)
-    (formatVector $ s ^. originL)
-    (formatVector $ s ^. targetL)
-    (formatVector $ s ^. upL)
-    (s ^. sampleCountL)
-    (s ^. widthL)
-    (s ^. widthL)
-    (case s ^. numChannelsL' of
+    (s CL.^. fovInDegreesL)
+    (formatVector $ s CL.^. originL)
+    (formatVector $ s CL.^. targetL)
+    (formatVector $ s CL.^. upL)
+    (s CL.^. sampleCountL)
+    (s CL.^. widthL)
+    (s CL.^. widthL)
+    (case s CL.^. numChannelsL' of
       1 -> "luminance"
       3 -> "rgb"
-      _ -> error $ printf
+      _ -> error $ TP.printf
         "numChannels must be 1 or 3, but was %d" $
-        s ^. numChannelsL')
+        s CL.^. numChannelsL')
 
-declareLenses [d|
+CL.declareLenses [d|
   data View = View {
     numChannelsL :: Int,
     integratorL :: Integrator,
     sensorL :: Sensor
   } deriving (Show, Read) |]
 
-declareLenses [d|
+CL.declareLenses [d|
   data Model = Model {
     directoryL :: FilePath,
     templateL :: String
   } deriving (Show, Read) |]
 
-declareLenses [d|
+CL.declareLenses [d|
   -- A Rendering is the direct output of a Mitsuba rendering of a scene.
   -- For this reason, some values in a rendering may be garbage; this can
   -- happen for rays that don't intersect any scene objects.
   data Rendering = Rendering {
     -- This is the HDR color image.
-    rgbL :: Array U DIM3 Double,
+    rgbL :: DAR.Array DAR.U DAR.DIM3 Double,
     -- These are 3D coordinates of each of the pixels in the RGB image.
-    positionL :: Array U DIM3 Double,
+    positionL :: DAR.Array DAR.U DAR.DIM3 Double,
     -- These is the depth map.
     -- The third dimension is extra, but it is represented as a DIM3
     -- to make the types easier.
-    distanceL :: Array U DIM3 Double
+    distanceL :: DAR.Array DAR.U DAR.DIM3 Double
   } deriving (Show, Read) |]
 
 makeMitsubaScript :: String -> View -> String
 makeMitsubaScript template v =
    let
-     replaceIntegrator = replace "$INTEGRATOR" (showXML $ v ^. integratorL)
-     replaceSensor = replace "$SENSOR" (showXML $ v ^. sensorL)
+     replaceIntegrator = DSU.replace "$INTEGRATOR" (showXML $ v CL.^. integratorL)
+     replaceSensor = DSU.replace "$SENSOR" (showXML $ v CL.^. sensorL)
     in
-      template & replaceIntegrator & replaceSensor
+      template CL.& replaceIntegrator CL.& replaceSensor
 
 makeSceneDirectory :: FilePath -> String -> IO (String, String)
 makeSceneDirectory modelDirectory mitsubaScript = do
   salt <- randomString 8
   let
-    directory = joinPath [
+    directory = SFP.joinPath [
       "/tmp",
-      printf "%s_%s" salt $ last $ splitPath modelDirectory]
-    scriptPath = joinPath [ directory, "script.xml"]
-  putStrLn $ printf "Copying %s to %s." modelDirectory directory
+      TP.printf "%s_%s" salt $ last $ SFP.splitPath modelDirectory]
+    scriptPath = SFP.joinPath [ directory, "script.xml"]
+  putStrLn $ TP.printf "Copying %s to %s." modelDirectory directory
   copyDirectory modelDirectory directory
-  putStrLn $ printf "Writing Mitsuba script to %s" scriptPath
+  putStrLn $ TP.printf "Writing Mitsuba script to %s" scriptPath
   writeFile
     scriptPath
     mitsubaScript
@@ -130,11 +125,11 @@ makePythonScript numChannels npyPath csvPattern =
   let
     first = [
       "import numpy",
-      printf "arr = numpy.load(\"%s\")" npyPath,
+      TP.printf "arr = numpy.load(\"%s\")" npyPath,
       "if len(arr.shape) == 2: arr = numpy.reshape(arr, (arr.shape[0], arr.shape[1], 1))"]
-    save i = printf
+    save i = TP.printf
       "numpy.savetxt(\"%s\", arr[:, :, %d], delimiter=\",\")"
-      (printf csvPattern i :: String)
+      (TP.printf csvPattern i :: String)
       i
     second = map save [0 .. numChannels - 1]
   in
@@ -143,13 +138,13 @@ makePythonScript numChannels npyPath csvPattern =
 loadCSVs :: Int -> String -> IO [[[String]]]
 loadCSVs numChannels csvPattern = do
   let
-    load i = parseFromFile csvFile $ printf csvPattern i
+    load i = TPS.parseFromFile DC.csvFile $ TP.printf csvPattern i
     right i = do
       Right r' <- load i
       return r'
   mapM right [0 .. numChannels - 1]
 
-parseRenderingComponent :: [[[String]]] -> Array U DIM3 Double
+parseRenderingComponent :: [[[String]]] -> DAR.Array DAR.U DAR.DIM3 Double
 parseRenderingComponent csv =
   let
     numChannels = length csv

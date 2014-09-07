@@ -11,12 +11,12 @@ library
     lib
 
   exposed-modules:
-    RenderUtil
-    SystemUtil
-    RawStrings
-    Score
-    MCMC
-    SpatialIndex
+    DeepDescriptor.Render
+    DeepDescriptor.System
+    DeepDescriptor.RawStrings
+    DeepDescriptor.Score
+    DeepDescriptor.MCMC
+    DeepDescriptor.SpatialIndex
 
   default-language:
     Haskell2010

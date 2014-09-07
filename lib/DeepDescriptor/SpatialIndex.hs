@@ -1,12 +1,13 @@
-module SpatialIndex where
+module DeepDescriptor.SpatialIndex where
 
 import Data.Trees.KdTree
 import Data.Array.Repa hiding (map)
 import qualified Data.Array.Repa as R
-import MCMC
-import RenderUtil
 import qualified Data.Vector as V
 import           Control.Lens
+
+import DeepDescriptor.MCMC
+import DeepDescriptor.Render
 
 -- type Point3D = Array U DIM1 Double
 

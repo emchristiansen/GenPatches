@@ -1,23 +1,23 @@
-module RawStrings where
+module DeepDescriptor.RawStrings where
 
-import           Text.RawString.QQ
+import qualified Text.RawString.QQ as TRQ
 
 positionString :: String
-positionString = [r|
+positionString = [TRQ.r|
 <integrator type="field">
   <string name="field" value="position"/>
 </integrator>
 |]
 
 distanceString :: String
-distanceString = [r|
+distanceString = [TRQ.r|
 <integrator type="field">
   <string name="field" value="distance"/>
 </integrator>
 |]
 
 sensorString :: String
-sensorString = [r|
+sensorString = [TRQ.r|
 <sensor type="perspective">
   <float name="nearClip" value="10"/>
   <float name="farClip" value="2800"/>

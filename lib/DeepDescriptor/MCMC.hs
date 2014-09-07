@@ -1,15 +1,12 @@
-module MCMC where
+module DeepDescriptor.MCMC where
 
-import RenderUtil
 import Data.Random.Normal
 import           System.FilePath.Posix
 import Data.Array.Repa hiding (map)
 import qualified Data.Array.Repa as R
 import Control.Monad
 import Control.Lens
-import Score
 import Text.Printf
-import SystemUtil
 import Control.Exception
 import Control.Monad (unless)
 import Pipes
@@ -20,6 +17,10 @@ import qualified Data.Sequence as Seq
 -- import Data.Sequence ((<|))
 import qualified Data.Foldable as Foldable
 -- import System.IO.Error
+
+import DeepDescriptor.Render
+import DeepDescriptor.Score
+import DeepDescriptor.System
 
 makeUnitLength :: Array U DIM1 Double -> Array U DIM1 Double
 makeUnitLength vector =
