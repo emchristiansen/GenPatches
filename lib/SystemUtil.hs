@@ -1,64 +1,48 @@
 module SystemUtil where
 
-import           Control.Monad
--- import           System.Exit
--- import           System.Process
-import           System.Random
-import           Text.Printf
-import qualified Data.ByteString.Lazy.Char8 as ByteString
--- import qualified Data.ByteString.Char8 as ByteString
-import Codec.Compression.GZip
-import           System.FilePath.Posix
-import qualified Data.Sequence as Seq
--- import Data.Sequence ((<|))
-import qualified Data.Foldable as Foldable
-import Shelly hiding (FilePath, command)
--- import qualified Shelly as S
-import qualified Data.Text as T
-default (T.Text)
+import qualified Control.Monad as CM
+import qualified System.Random as SR
+import qualified Text.Printf as TP
+import qualified Data.ByteString.Lazy.Char8 as DBLC
+import qualified Codec.Compression.GZip as CCG
+import qualified System.FilePath.Posix as SFP
+import qualified Shelly as S
+import qualified Data.Text as DT
 
 runShell :: String -> IO()
 runShell command = do
-  putStrLn "Running shell command:"
-  putStrLn command
+  putStrLn $ TP.printf "Running shell command: %s" command
   let
-    binary : arguments = map T.pack $ words command
-    -- shelly :: Sh String
-    -- shelly = run binary arguments
-  _ <- shelly $ silently $ run (fromText  binary) arguments
+    binary : arguments = map DT.pack $ words command
+  _ <- S.shelly $ S.silently $ S.run (S.fromText binary) arguments
   return ()
-  -- process <- runCommand command
-  -- exitCode <- waitForProcess process
-  -- case exitCode of
-    -- ExitSuccess -> putStrLn "Shell command finished."
-    -- ExitFailure _ -> error $ printf "Shell command failed: %s" command
 
 copyDirectory :: FilePath -> FilePath -> IO ()
-copyDirectory from to = runShell $ printf "cp -r %s %s" from to
+copyDirectory from to = runShell $ TP.printf "cp -r %s %s" from to
 
 makeDirectory :: FilePath -> IO ()
-makeDirectory dir = runShell $ printf "mkdir -p %s" dir
+makeDirectory dir = runShell $ TP.printf "mkdir -p %s" dir
 
 randomString :: Int -> IO String
 randomString length' = do
   let chars = ['a' .. 'z'] ++ ['0' .. '9']
-  indices' <- replicateM length' $ randomRIO (0, length chars - 1)
+  indices' <- CM.replicateM length' $ SR.randomRIO (0, length chars - 1)
   return $ map (chars !!) indices'
 
 outputRoot :: FilePath
 outputRoot = "/home/eric/Downloads/mcmc"
 
 renderingRoot :: FilePath
-renderingRoot = joinPath [outputRoot, "rendering"]
+renderingRoot = SFP.joinPath [outputRoot, "rendering"]
 
 mvrRoot :: FilePath
-mvrRoot = joinPath [outputRoot, "mvr"]
+mvrRoot = SFP.joinPath [outputRoot, "mvr"]
 
 writeCompressed :: Show a => FilePath -> a -> IO ()
 writeCompressed path contents =
-  ByteString.writeFile path (compress $ ByteString.pack $ show contents)
+  DBLC.writeFile path (CCG.compress $ DBLC.pack $ show contents)
 
 readCompressed :: Read a => FilePath -> IO a
 readCompressed path = do
-  bytes <- ByteString.readFile path
-  return $ (read . ByteString.unpack . decompress) bytes
+  bytes <- DBLC.readFile path
+  return $ (read . DBLC.unpack . CCG.decompress) bytes
