@@ -2,9 +2,9 @@
 
 function run() {
   #cabal clean &&
-  sh configure.sh &&
+  #sh configure.sh &&
   cabal build
-  #cabal haddock
+  cabal haddock
 }
 
 while inotifywait -qq -r -e modify .; do echo "Running"; time run; echo "Done"; done

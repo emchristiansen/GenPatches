@@ -1,4 +1,4 @@
-module DeepDescriptor.SpatialIndex where
+module DeepDescriptor.SpatialIndex.SpatialIndex where
 
 import Data.Trees.KdTree
 import Data.Array.Repa hiding (map)

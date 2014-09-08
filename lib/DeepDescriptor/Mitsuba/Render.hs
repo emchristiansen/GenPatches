@@ -1,4 +1,4 @@
-module DeepDescriptor.Render where
+module DeepDescriptor.Mitsuba.Render where
 
 import qualified Codec.Picture as CP
 import qualified Control.Exception as CE
@@ -13,80 +13,6 @@ import qualified Text.Printf as TP
 
 import DeepDescriptor.RawStrings
 import DeepDescriptor.System
-
-class ShowXML a where
-  showXML :: a -> String
-
-data Integrator = RGB | Position | Distance
-  deriving (Show, Read)
-
-instance ShowXML Integrator where
-  showXML RGB = "<integrator type=\"path\"/>"
-  showXML Position = positionString
-  showXML Distance = distanceString
-
-CL.declareLenses [d|
-  data Sensor = Sensor {
-    fovInDegreesL :: Double,
-    originL :: DAR.Array DAR.U DAR.DIM1 Double,
-    targetL :: DAR.Array DAR.U DAR.DIM1 Double,
-    upL :: DAR.Array DAR.U DAR.DIM1 Double,
-    widthL :: Int,
-    numChannelsL' :: Int,
-    sampleCountL :: Int
-  } deriving (Show, Read) |]
-
-formatVector :: DAR.Array DAR.U DAR.DIM1 Double -> String
-formatVector vector = TP.printf
-  "%f,%f,%f"
-  (DAR.index vector (DAR.Z DAR.:. 0))
-  (DAR.index vector (DAR.Z DAR.:. 1))
-  (DAR.index vector (DAR.Z DAR.:. 2))
-
-instance ShowXML Sensor where
-  showXML s = TP.printf
-    sensorString
-    (s CL.^. fovInDegreesL)
-    (formatVector $ s CL.^. originL)
-    (formatVector $ s CL.^. targetL)
-    (formatVector $ s CL.^. upL)
-    (s CL.^. sampleCountL)
-    (s CL.^. widthL)
-    (s CL.^. widthL)
-    (case s CL.^. numChannelsL' of
-      1 -> "luminance"
-      3 -> "rgb"
-      _ -> error $ TP.printf
-        "numChannels must be 1 or 3, but was %d" $
-        s CL.^. numChannelsL')
-
-CL.declareLenses [d|
-  data View = View {
-    numChannelsL :: Int,
-    integratorL :: Integrator,
-    sensorL :: Sensor
-  } deriving (Show, Read) |]
-
-CL.declareLenses [d|
-  data Model = Model {
-    directoryL :: FilePath,
-    templateL :: String
-  } deriving (Show, Read) |]
-
-CL.declareLenses [d|
-  -- A Rendering is the direct output of a Mitsuba rendering of a scene.
-  -- For this reason, some values in a rendering may be garbage; this can
-  -- happen for rays that don't intersect any scene objects.
-  data Rendering = Rendering {
-    -- This is the HDR color image.
-    rgbL :: DAR.Array DAR.U DAR.DIM3 Double,
-    -- These are 3D coordinates of each of the pixels in the RGB image.
-    positionL :: DAR.Array DAR.U DAR.DIM3 Double,
-    -- These is the depth map.
-    -- The third dimension is extra, but it is represented as a DIM3
-    -- to make the types easier.
-    distanceL :: DAR.Array DAR.U DAR.DIM3 Double
-  } deriving (Show, Read) |]
 
 makeMitsubaScript :: String -> View -> String
 makeMitsubaScript template v =
@@ -179,7 +105,7 @@ renderComponent m v = do
   -- csvs & head & head & length & show & print
   return $ parseRenderingComponent csvs
 
-render :: Model -> View -> IO Rendering
+render :: Renderer
 render m v = do
   let
     rgb :: View
@@ -197,32 +123,3 @@ render m v = do
   d <- renderComponent m distance
   return $ Rendering r' p d
 
-rgbToImage :: Array U DIM3 Double -> Image PixelRGBF
-rgbToImage rgb =
-  let
-    fromXY x y = PixelRGBF
-      (double2Float $ index rgb (Z :. y :. x :. 0))
-      (double2Float $ index rgb (Z :. y :. x :. 1))
-      (double2Float $ index rgb (Z :. y :. x :. 2))
-    Z :. width :. _ :. 3 = extent rgb
-  in
-    generateImage fromXY width width
-
-distanceToImage :: Array U DIM3 Double -> Image PixelF
-distanceToImage distance =
-  let
-    fromXY x y = (double2Float $ index distance (Z :. y :. x :. 0))
-    Z :. width :. _ :. 1 = extent distance
-  in
-    generateImage fromXY width width
-
-showRendering :: Rendering -> String -> IO()
-showRendering r pattern = do
-  let
-    rgb = printf pattern "rgb"
-    -- distance = printf pattern "distance"
-  putStrLn $ printf "Writing %s" rgb
-  savePngImage rgb $ ImageRGBF $ rgbToImage $ r ^. rgbL
-  -- putStrLn $ printf "Writing %s" distance
-  -- savePngImage distance $ ImageYF $ distanceToImage $
-    -- r ^. distanceL

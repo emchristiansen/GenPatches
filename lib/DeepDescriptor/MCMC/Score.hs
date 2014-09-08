@@ -1,4 +1,4 @@
-module DeepDescriptor.Score where
+module DeepDescriptor.MCMC.Score where
 
 import           Data.Array.Repa       hiding (extract, map, (++))
 import qualified Data.Array.Repa as R
