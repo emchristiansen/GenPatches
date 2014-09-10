@@ -5,7 +5,7 @@ DeepDescriptor.MVR defines common types for DeepDescriptor, including the Model,
 module DeepDescriptor.MVR (
   Model(..),
   Integrator(..),
-  numChannels,
+  -- numChannels,
   Vector3D,
   Degrees(),
   mkDegrees,
@@ -22,6 +22,8 @@ import qualified Control.Lens as CL
 import qualified Codec.Picture as CP
 import qualified Text.Printf as TP
 import qualified GHC.Float as GF
+import qualified Data.Array.Repa.Repr.Vector as DARRV
+import qualified Control.Exception as CE
 
 -- | 'Model' specifies the graphics model (vertices, textures, etc) of the scene.
 data Model = Model {
@@ -47,10 +49,10 @@ data Integrator
 
 -- | 'numChannels' specifies the number of image channels for each of the
 -- 'Integrator' types.
-numChannels :: Integrator -> Int
-numChannels RGB = 3
-numChannels Position = 3
-numChannels Depth = 1
+-- numChannels :: Integrator -> Int
+-- numChannels RGB = 3
+-- numChannels Position = 3
+-- numChannels Depth = 1
 
 -- | 'Vector3D' is a vector in R^3.
 type Vector3D = DAR.Array DAR.U DAR.DIM1 Double
@@ -66,6 +68,7 @@ mkDegrees d =
 
 -- | CameraFrame specifies the 3D location, direction, and field of view
 -- of the virtual camera.
+-- Invariant: 'up' is orthogonal to 'target' - 'origin'.
 data CameraFrame = CameraFrame {
   _fovInDegrees :: Degrees,
   _origin :: Vector3D,
@@ -80,9 +83,16 @@ mkCameraFrame
   -> Vector3D -- ^ 'origin' is the camera center.
   -> Vector3D -- ^ 'target' is the point at which the camera is looking.
   -> Vector3D -- ^ 'up' is the up vector of the camera.
-             -- Invariant: It is orthogonal to 'target' - 'origin'.
+             -- It must be orthogonal to 'target' - 'origin'.
   -> Maybe CameraFrame
-mkCameraFrame f o t u = undefined
+mkCameraFrame f o t u =
+  let
+    lookDirection = t DAR.-^ o
+    dotProduct = DAR.sumAllS $ lookDirection DAR.*^ u
+  in
+    if ((abs dotProduct) < 0.00001)
+       then Just $ CameraFrame f o t u
+       else Nothing
 
 -- | 'Sensor' specifies the camera location in the scene and some of its
 -- rendering properties.
@@ -112,55 +122,127 @@ data View =
   } deriving (Show, Read)
 CL.makeLenses ''View
 
+-- | RGBImage is a 3 channel color image.
+-- It may contain junk values.
 type RGBImage = DAR.Array DAR.U DAR.DIM3 Double
-type PositionMap = DAR.Array DAR.U DAR.DIM3 Double
-type DepthMap = DAR.Array DAR.U DAR.DIM1 Double
 
--- : 'Rendering' is the direct output of a Mitsuba rendering of a scene.
+-- | PositionMap is a 3 channel array where each element is the 3D location in
+-- the scene of the point under that pixel.
+-- It may contain junk values.
+type PositionMap = DAR.Array DAR.U DAR.DIM3 Double
+
+-- | DepthMap is a 1 channel array given the distance from the camera of each point.
+-- It may contain junk values.
+type DepthMap = DAR.Array DAR.U DAR.DIM2 Double
+
+-- | 'Rendering' is the direct output of a Mitsuba rendering of a scene.
 -- For this reason, some values in a rendering may be garbage; this can
 -- happen for rays that don't intersect any scene objects.
+-- TODO: Invariant: All elements have the same width and height.
 data Rendering = Rendering {
-  -- This is the HDR color image.
-  _rgbL :: RGBImage,
-  -- These are 3D coordinates of each of the pixels in the RGB image.
+  -- 'rgb' is the HDR color image.
+  _rgb :: RGBImage,
+  -- 'position' is the 3D coordinates of each of the pixels in the RGB image.
   _position :: PositionMap,
-  -- These is the depth map.
-  -- The third dimension is extra, but it is represented as a DIM3
-  -- to make the types easier.
+  -- 'depth' is the is the distance from the camera center to the object
+  -- under each pixel.
   _depth :: DepthMap
 } deriving (Show, Read)
 CL.makeLenses ''Rendering
 
+-- | 'Renderer' is a type that takes a 'Model' and renders it from
+-- the given 'View'.
 type Renderer = Model -> View -> IO Rendering
 
-data MVR = MVR Model View Rendering deriving (Show, Read)
+-- | 'RGBImageValid' is like 'RGBImage' but only contains valid values.
+type RGBImageValid = DAR.Array DARRV.V DAR.DIM3 (Maybe Double)
 
-rgbToImage :: DAR.Array DAR.U DAR.DIM3 Double -> CP.Image CP.PixelRGBF
-rgbToImage rgb =
+-- | 'PositionMapValid' is like 'PositionMap' but only contains valid values.
+type PositionMapValid = DAR.Array DARRV.V DAR.DIM3 (Maybe Double)
+
+-- | 'DepthMapValid' is like 'DepthMap' but only contains valid values.
+type DepthMapValid = DAR.Array DARRV.V DAR.DIM2 (Maybe Double)
+
+-- | 'RenderingValid' is like 'Rendering' but only contains valid values.
+-- TODO: Invariant: All elements have the same width and height.
+data RenderingValid = RenderingValid {
+  -- 'rgbValid' is valid RGB values.
+  _rgbValid :: RGBImageValid,
+  -- 'positionValid' is valid 3D positions.
+  _positionValid :: PositionMapValid,
+  -- 'depthValid' is valid depths.
+  _depthValid :: DepthMapValid
+} deriving (Show, Read)
+CL.makeLenses ''RenderingValid
+
+-- | getMask detects which pixels in a rendering are valid by inspecting
+-- the depth map values.
+-- It is a helper for mkRenderingValid.
+getMask :: DepthMap -> DAR.Array DAR.U DAR.DIM2 Bool
+getMask d = DAR.computeS $ DAR.map (\x -> x >= 0.01 && x <= 2800.0) d
+
+-- | mkRenderingValid creates a valid rendering from a raw rendering by
+-- detecting and masking out invalid pixels.
+mkRenderingValid :: Rendering -> RenderingValid
+mkRenderingValid r =
   let
-    fromXY x y = CP.PixelRGBF
-      (GF.double2Float $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 0))
-      (GF.double2Float $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 1))
-      (GF.double2Float $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 2))
-    DAR.Z DAR.:. width DAR.:. _ DAR.:. 3 = DAR.extent rgb
+    y :: DAR.Array DAR.U DAR.DIM2 Double
+    y = r CL.^. depth
+    -- DAR.Z DAR.:. rows DAR.:. columns = DAR.extent $ r CL.^. depth
+    DAR.Z DAR.:. r2 DAR.:. c2 = y
+    x = DAR.extent $ r CL.^. depth
+    -- mask = getMask $ r CL.^. depth
+    -- from3D array = DAR.computeS $ DAR.fromFunction
+      -- (DAR.extent array)
+      -- (\location @ (DAR.Z DAR.:. row DAR.:. column DAR.:. 3) ->
+        -- if DAR.index mask (DAR.Z DAR.:. row DAR.:. column)
+           -- then Just $ DAR.index array location
+           -- else Nothing)
+    rgb' :: RGBImageValid
+    rgb' = undefined
+    -- rgb' = from3D $ r CL.^. rgb
+    position' :: PositionMapValid
+    position' = undefined
+    -- position' = from3D $ r CL.^. position
+    depth' :: DepthMapValid
+    depth' = undefined
+    -- depth' = DAR.computeS $ DAR.fromFunction
+      -- (DAR.extent $ r CL.^. depth)
+      -- (\location ->
+        -- if DAR.index mask location
+           -- then Just $ DAR.index (r CL.^. depth) location
+           -- else Nothing)
   in
-    CP.generateImage fromXY width width
+    RenderingValid rgb' position' depth'
 
-distanceToImage :: DAR.Array DAR.U DAR.DIM3 Double -> CP.Image CP.PixelF
-distanceToImage distance =
-  let
-    fromXY x y = (GF.double2Float $ DAR.index distance (DAR.Z DAR.:. y DAR.:. x DAR.:. 0))
-    DAR.Z DAR.:. width DAR.:. _ DAR.:. 1 = DAR.extent distance
-  in
-    CP.generateImage fromXY width width
+data MVR = MVR Model View RenderingValid deriving (Show, Read)
 
-showRendering :: Rendering -> String -> IO()
-showRendering r pattern = do
-  let
-    rgb = TP.printf pattern "rgb"
-    -- distance = printf pattern "distance"
-  putStrLn $ TP.printf "Writing %s" rgb
-  CP.savePngImage rgb $ CP.ImageRGBF $ rgbToImage $ r CL.^. rgbL
-  -- putStrLn $ printf "Writing %s" distance
-  -- savePngImage distance $ ImageYF $ distanceToImage $
-    -- r ^. distanceL
+-- rgbToImage :: DAR.Array DAR.U DAR.DIM3 Double -> CP.Image CP.PixelRGBF
+-- rgbToImage rgb =
+--   let
+--     fromXY x y = CP.PixelRGBF
+--       (GF.double2Float $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 0))
+--       (GF.double2Float $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 1))
+--       (GF.double2Float $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 2))
+--     DAR.Z DAR.:. width DAR.:. _ DAR.:. 3 = DAR.extent rgb
+--   in
+--     CP.generateImage fromXY width width
+
+-- distanceToImage :: DAR.Array DAR.U DAR.DIM3 Double -> CP.Image CP.PixelF
+-- distanceToImage distance =
+--   let
+--     fromXY x y = (GF.double2Float $ DAR.index distance (DAR.Z DAR.:. y DAR.:. x DAR.:. 0))
+--     DAR.Z DAR.:. width DAR.:. _ DAR.:. 1 = DAR.extent distance
+--   in
+--     CP.generateImage fromXY width width
+
+-- showRendering :: Rendering -> String -> IO()
+-- showRendering r pattern = do
+--   let
+--     rgb = TP.printf pattern "rgb"
+--     -- distance = printf pattern "distance"
+--   putStrLn $ TP.printf "Writing %s" rgb
+--   CP.savePngImage rgb $ CP.ImageRGBF $ rgbToImage $ r CL.^. rgbL
+--   -- putStrLn $ printf "Writing %s" distance
+--   -- savePngImage distance $ ImageYF $ distanceToImage $
+--     -- r ^. distanceL
