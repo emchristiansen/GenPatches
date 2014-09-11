@@ -17,12 +17,12 @@ module DeepDescriptor.MVR (
   Sensor(),
   ) where
 
-import qualified Data.Array.Repa as DAR
-import qualified Control.Lens as CL
 import qualified Codec.Picture as CP
-import qualified Text.Printf as TP
-import qualified GHC.Float as GF
+import qualified Control.Lens as CL
+import qualified Data.Array.Repa as DAR
 import qualified Data.Array.Repa.Repr.Vector as DARRV
+import qualified GHC.Float as GF
+import qualified Text.Printf as TP
 import qualified Control.Exception as CE
 
 -- | 'Model' specifies the graphics model (vertices, textures, etc) of the scene.
@@ -186,11 +186,11 @@ getMask d = DAR.computeS $ DAR.map (\x -> x >= 0.01 && x <= 2800.0) d
 mkRenderingValid :: Rendering -> RenderingValid
 mkRenderingValid r =
   let
-    y :: DAR.Array DAR.U DAR.DIM2 Double
-    y = r CL.^. depth
+    -- y :: DAR.Array DAR.U DAR.DIM2 Double
+    -- y = r CL.^. depth
     -- DAR.Z DAR.:. rows DAR.:. columns = DAR.extent $ r CL.^. depth
-    DAR.Z DAR.:. r2 DAR.:. c2 = y
-    x = DAR.extent $ r CL.^. depth
+    -- DAR.Z DAR.:. r2 DAR.:. c2 = y
+    -- x = DAR.extent $ r CL.^. depth
     -- mask = getMask $ r CL.^. depth
     -- from3D array = DAR.computeS $ DAR.fromFunction
       -- (DAR.extent array)
