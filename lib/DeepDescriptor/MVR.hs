@@ -4,32 +4,65 @@ DeepDescriptor.MVR defines common types for DeepDescriptor, including the Model,
 
 module DeepDescriptor.MVR (
   Model(..),
+  directory,
+  template,
   Integrator(..),
   -- numChannels,
   Vector3D,
   Degrees(),
   mkDegrees,
+  unDegrees,
   CameraFrame(),
   fovInDegrees,
   origin,
   target,
+  up,
   mkCameraFrame,
-  Sensor(),
+  Sensor(..),
+  cameraFrame,
+  resolution,
+  sampleCount,
+  View(..),
+  integrator,
+  sensor,
+  RGBImage,
+  PositionMap,
+  DepthMap,
+  Rendering(..),
+  rgb,
+  position,
+  depth,
+  Renderer,
+  RGBImageValid,
+  PositionMapValid,
+  DepthMapValid,
+  RenderingValid(..),
+  rgbValid,
+  positionValid,
+  depthValid,
+  getMask,
+  mkRenderingValid,
+  MVR(..),
   ) where
 
-import qualified Codec.Picture as CP
+-- import qualified Codec.Picture as CP
 import qualified Control.Lens as CL
 import qualified Data.Array.Repa as DAR
 import qualified Data.Array.Repa.Repr.Vector as DARRV
-import qualified GHC.Float as GF
-import qualified Text.Printf as TP
-import qualified Control.Exception as CE
+-- import qualified GHC.Float as GF
+-- import qualified Text.Printf as TP
+-- import qualified Control.Exception as CE
 
 -- | 'Model' specifies the graphics model (vertices, textures, etc) of the scene.
 data Model = Model {
-  -- TODO: Remove reference to filesystem.
+  -- | directory specifies the root of the directory containing the scene data.
+  -- The parameterized template is expected to sit in the root of this directory.
+  -- TODO: Move this to an in-memory file system.
   _directory :: FilePath,
-  -- | templateL is test.
+  -- | template is a file specifying how a scene should be rendered.
+  -- It has a number of fields that should be overwritten before the file
+  -- is fed as input to Mitsuba.
+  -- TODO: Specify these fields.
   _template :: String
 } deriving (Show, Read)
 CL.makeLenses ''Model
@@ -181,37 +214,30 @@ CL.makeLenses ''RenderingValid
 getMask :: DepthMap -> DAR.Array DAR.U DAR.DIM2 Bool
 getMask d = DAR.computeS $ DAR.map (\x -> x >= 0.01 && x <= 2800.0) d
 
--- | mkRenderingValid creates a valid rendering from a raw rendering by
+-- | mkrenderingValid creates a valid rendering from a raw rendering by
 -- detecting and masking out invalid pixels.
 mkRenderingValid :: Rendering -> RenderingValid
 mkRenderingValid r =
   let
-    -- y :: DAR.Array DAR.U DAR.DIM2 Double
-    -- y = r CL.^. depth
-    -- DAR.Z DAR.:. rows DAR.:. columns = DAR.extent $ r CL.^. depth
-    -- DAR.Z DAR.:. r2 DAR.:. c2 = y
-    -- x = DAR.extent $ r CL.^. depth
-    -- mask = getMask $ r CL.^. depth
-    -- from3D array = DAR.computeS $ DAR.fromFunction
-      -- (DAR.extent array)
-      -- (\location @ (DAR.Z DAR.:. row DAR.:. column DAR.:. 3) ->
-        -- if DAR.index mask (DAR.Z DAR.:. row DAR.:. column)
-           -- then Just $ DAR.index array location
-           -- else Nothing)
+    mask = getMask $ r CL.^. depth
+    from3D :: DAR.Array DAR.U DAR.DIM3 Double -> RGBImageValid
+    from3D array = DAR.computeS $ DAR.fromFunction
+      (DAR.extent array)
+      (\location @ (DAR.Z DAR.:. row DAR.:. column DAR.:. 3) ->
+        if DAR.index mask (DAR.Z DAR.:. row DAR.:. column)
+           then Just $ DAR.index array location
+           else Nothing)
     rgb' :: RGBImageValid
-    rgb' = undefined
-    -- rgb' = from3D $ r CL.^. rgb
+    rgb' = from3D $ r CL.^. rgb
     position' :: PositionMapValid
-    position' = undefined
-    -- position' = from3D $ r CL.^. position
+    position' = from3D $ r CL.^. position
     depth' :: DepthMapValid
-    depth' = undefined
-    -- depth' = DAR.computeS $ DAR.fromFunction
-      -- (DAR.extent $ r CL.^. depth)
-      -- (\location ->
-        -- if DAR.index mask location
-           -- then Just $ DAR.index (r CL.^. depth) location
-           -- else Nothing)
+    depth' = DAR.computeS $ DAR.fromFunction
+      (DAR.extent $ r CL.^. depth)
+      (\location ->
+        if DAR.index mask location
+           then Just $ DAR.index (r CL.^. depth) location
+           else Nothing)
   in
     RenderingValid rgb' position' depth'
 
