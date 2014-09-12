@@ -1,8 +1,9 @@
-package DeepDescriptor.Mitsuba.Config where
+module DeepDescriptor.Mitsuba.Config where
 
 import qualified Data.Array.Repa as DAR
 import qualified Control.Lens as CL
 import qualified Text.RawString.QQ as TRQ
+import qualified Text.Printf as TP
 
 class ShowXML a where
   showXML :: a -> String

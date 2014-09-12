@@ -14,7 +14,7 @@ library
     -- DeepDescriptor.System
     DeepDescriptor.MVR
     -- DeepDescriptor.Mitsuba.Render
-    -- DeepDescriptor.Mitsuba.Config
+    DeepDescriptor.Mitsuba.Config
     -- DeepDescriptor.MCMC.Score
     -- DeepDescriptor.MCMC.Perturb
     -- DeepDescriptor.MCMC.Iterate
