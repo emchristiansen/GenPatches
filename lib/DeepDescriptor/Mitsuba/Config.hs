@@ -4,29 +4,33 @@ import qualified Data.Array.Repa as DAR
 import qualified Control.Lens as CL
 import qualified Text.RawString.QQ as TRQ
 import qualified Text.Printf as TP
+import qualified Control.Exception as CE
+import qualified Formatting as F
+import qualified Data.Text.Lazy as DTL
+
+import DeepDescriptor.MVR
 
 class ShowXML a where
   showXML :: a -> String
 
-positionString :: String
-positionString = [TRQ.r|
+strings :: String
+strings = DTL.unpack $ F.format
+  ("Here comes a string: " F.% F.string F.% " and another " F.% F.string)
+  "Hello, World!"
+  "Ahoy!"
+
+instance ShowXML Integrator where
+  showXML RGB = "<integrator type=\"path\"/>"
+  showXML Position = [TRQ.r|
 <integrator type="field">
   <string name="field" value="position"/>
 </integrator>
 |]
-
-distanceString :: String
-distanceString = [TRQ.r|
+  showXML Depth = [TRQ.r|
 <integrator type="field">
   <string name="field" value="distance"/>
 </integrator>
 |]
-
-instance ShowXML Integrator where
-  showXML RGB = "<integrator type=\"path\"/>"
-  showXML Position = positionString
-  showXML Distance = distanceString
-
 
 formatVector :: DAR.Array DAR.U DAR.DIM1 Double -> String
 formatVector vector = TP.printf
@@ -60,19 +64,16 @@ sensorString = [TRQ.r|
   </film>
 </sensor>|]
 
-instance ShowXML Sensor where
-  showXML s = TP.printf
-    sensorString
-    (s CL.^. fovInDegreesL)
-    (formatVector $ s CL.^. originL)
-    (formatVector $ s CL.^. targetL)
-    (formatVector $ s CL.^. upL)
-    (s CL.^. sampleCountL)
-    (s CL.^. widthL)
-    (s CL.^. widthL)
-    (case s CL.^. numChannelsL' of
-      1 -> "luminance"
-      3 -> "rgb"
-      _ -> error $ TP.printf
-        "numChannels must be 1 or 3, but was %d" $
-        s CL.^. numChannelsL')
+instance ShowXML (Sensor, Int) where
+  showXML (s, numChannels) =
+    CE.assert ((numChannels == 1) || (numChannels == 3)) $
+    TP.printf
+      sensorString
+      (unDegrees $ s CL.^. cameraFrame CL.^. fovInDegrees)
+      (formatVector $ s CL.^. cameraFrame CL.^. origin)
+      (formatVector $ s CL.^. cameraFrame CL.^. target)
+      (formatVector $ s CL.^. cameraFrame CL.^. up)
+      (s CL.^. sampleCount)
+      (s CL.^. resolution)
+      (s CL.^. resolution)
+      numChannels
