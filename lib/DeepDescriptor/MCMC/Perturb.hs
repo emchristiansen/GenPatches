@@ -1,50 +1,68 @@
 module DeepDescriptor.MCMC.Perturb where
 
-makeUnitLength :: Array U DIM1 Double -> Array U DIM1 Double
+import qualified Control.Lens as CL
+import qualified Data.Array.Repa as DAR
+import qualified Data.Random.Normal as DRN
+import qualified Control.Monad as CM
+
+import DeepDescriptor.MVR
+
+class Perturb a where
+  perturb :: Double -> a -> IO a
+
+makeUnitLength :: Vector3D -> Vector3D
 makeUnitLength vector =
   let
-    magnitude = sqrt $ sumAllS $ R.map (\x -> x * x) vector
+    magnitude = sqrt $ DAR.sumAllS $ DAR.map (\x -> x * x) vector
   in
-    computeS $ R.map (/ magnitude) vector
+    DAR.computeS $ DAR.map (/ magnitude) vector
 
-perturbFOV :: Sensor -> IO Sensor
-perturbFOV s = do
-  delta <- normalIO
-  let
-    fov' = (s ^. fovInDegreesL) + 0.1 * delta
-    fov''
-      | fov' > 60.0 = 60.0
-      | fov' < 20.0 = 20.0
-      | otherwise = fov'
-  return $ set fovInDegreesL fov'' s
+randomVector3D :: Double -> IO Vector3D
+randomVector3D std = do
+  list <- CM.liftM (map (* std) . take 3) DRN.normalsIO
+  return $ DAR.fromListUnboxed (DAR.Z DAR.:. 3) list
 
-pVector :: Double -> Array U DIM1 Double -> IO (Array U DIM1 Double)
-pVector std vector = do
-  delta <- liftM (map (* std) . take 3) normalsIO
-  let
-    d = fromListUnboxed (Z :. 3) delta
-  return $ computeS $ vector +^ d
+instance Perturb Degrees where
+  perturb std d = do
+    delta <- CM.liftM (std *) DRN.normalIO
+    let
+      d' = d + 1.0 * delta
+      d''
+        | d' > 60.0 = 60.0
+        | d' < 20.0 = 20.0
+        | otherwise = d'
+    return d''
 
-perturbOrigin :: Sensor -> IO Sensor
-perturbOrigin s = do
-  let
-    std = 10.0
-  delta <- liftM (fromListUnboxed (Z :. 3)) $ liftM (map (* std) . take 3) normalsIO
-  let
-    origin' = computeS $ s ^. originL +^ delta
-    target' = computeS $ s ^. targetL +^ delta
-  return $ set originL origin' $ set targetL target' s
+instance Perturb (Double, Vector3D) where
+  perturb std v = do
+    delta <- randomVector3D std
+    return $ DAR.computeS $ v DAR.+^ delta
 
-perturbTarget :: Sensor -> IO Sensor
-perturbTarget s = do
-  let
-    offset = makeUnitLength $ computeS $ s ^. targetL -^ s ^. originL
-  offset' <- liftM makeUnitLength $ pVector 0.1 offset
-  let
-    target' = computeS $ s ^. originL +^ offset'
-  return $ set targetL target' s
-  -- p <- pVector 0.1 $ computeS $ target -^ (s ^. originL)
-  -- return $ computeS $ s ^. originL +^ makeUnitLength p
+-- | Perturb the origin and update the target so they track together.
+instance Perturb (Target, Origin) where
+  perturb std (t, o) = do
+    delta <- randomVector3D std
+    let
+      o' = DAR.computeS $ o DAR.+^ delta
+      t' = DAR.computeS $ t DAR.+^ delta
+    return (t', o')
+
+dot :: Vector3D -> Vector3D -> Double
+dot v0 v1 = DAR.sumAllS $ v0 DAR.*^ v1
+
+-- | Perturb the target and update the up vector.
+-- The origin vector is used for reference but is not updated.
+instance Perturb ((Origin, Up), Target) where
+  perturb std ((o, u), t) = do
+    delta <- randomVector3D std
+    let
+      offset = makeUnitLength $ DAR.computeS $ unTarget t DAR.-^ unOrigin o
+    offset' <- CM.liftM makeUnitLength $ perturb offset
+    let
+      t' = Target $ DAR.computeS $ offset' DAR.+^ o
+      uDotOffset'TimesOffset' = DAR.map (((unUp u) `dot` offset') *) offset'
+      u' = Up $ DAR.computeS $ unUp u DAR.-^ uDotOffset'TimesOffset'
+    return ((o, u'), t')
 
 perturbUp :: Sensor -> IO Sensor
 perturbUp s = do

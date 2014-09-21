@@ -12,6 +12,9 @@ module DeepDescriptor.MVR (
   Degrees(),
   mkDegrees,
   unDegrees,
+  Origin(..),
+  Target(..),
+  Up(..),
   CameraFrame(),
   fovInDegrees,
   origin,
@@ -99,29 +102,33 @@ mkDegrees d =
      then Just $ Degrees d
      else Nothing
 
+data Origin = Origin { unOrigin :: Vector3D } deriving (Show, Read)
+data Target = Target { unTarget :: Vector3D } deriving (Show, Read)
+data Up = Up { unUp :: Vector3D } deriving (Show, Read)
+
 -- | CameraFrame specifies the 3D location, direction, and field of view
 -- of the virtual camera.
 -- Invariant: 'up' is orthogonal to 'target' - 'origin'.
 data CameraFrame = CameraFrame {
   _fovInDegrees :: Degrees,
-  _origin :: Vector3D,
-  _target :: Vector3D,
-  _up :: Vector3D
+  _origin :: Origin,
+  _target :: Target,
+  _up :: Up
 } deriving (Show, Read)
 CL.makeLenses ''CameraFrame
 
 -- | mkCameraFrame constructs a 'CameraFrame'.
 mkCameraFrame
   :: Degrees -- ^ 'fovInDegrees' is the field of view in degrees.
-  -> Vector3D -- ^ 'origin' is the camera center.
-  -> Vector3D -- ^ 'target' is the point at which the camera is looking.
-  -> Vector3D -- ^ 'up' is the up vector of the camera.
+  -> Origin -- ^ 'origin' is the camera center.
+  -> Target -- ^ 'target' is the point at which the camera is looking.
+  -> Up -- ^ 'up' is the up vector of the camera.
              -- It must be orthogonal to 'target' - 'origin'.
   -> Maybe CameraFrame
 mkCameraFrame f o t u =
   let
-    lookDirection = t DAR.-^ o
-    dotProduct = DAR.sumAllS $ lookDirection DAR.*^ u
+    lookDirection = (unTarget t) DAR.-^ (unOrigin o)
+    dotProduct = DAR.sumAllS $ lookDirection DAR.*^ (unUp u)
   in
     if ((abs dotProduct) < 0.00001)
        then Just $ CameraFrame f o t u
@@ -185,7 +192,7 @@ CL.makeLenses ''Rendering
 
 -- | 'Renderer' is a type that takes a 'Model' and renders it from
 -- the given 'View'.
-type Renderer = Model -> View -> IO Rendering
+type Renderer = Model -> (Integrator -> View) -> IO Rendering
 
 -- | 'RGBImageValid' is like 'RGBImage' but only contains valid values.
 type RGBImageValid = DAR.Array DARRV.V DAR.DIM3 (Maybe Double)

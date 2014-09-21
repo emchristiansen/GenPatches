@@ -29,14 +29,14 @@ randomString length' = do
   indices' <- CM.replicateM length' $ SR.randomRIO (0, length chars - 1)
   return $ map (chars !!) indices'
 
-outputRoot :: FilePath
-outputRoot = "/home/eric/Downloads/mcmc"
+-- outputRoot :: FilePath
+-- outputRoot = "/home/eric/Downloads/mcmc"
 
-renderingRoot :: FilePath
-renderingRoot = SFP.joinPath [outputRoot, "rendering"]
+-- renderingRoot :: FilePath
+-- renderingRoot = SFP.joinPath [outputRoot, "rendering"]
 
-mvrRoot :: FilePath
-mvrRoot = SFP.joinPath [outputRoot, "mvr"]
+-- mvrRoot :: FilePath
+-- mvrRoot = SFP.joinPath [outputRoot, "mvr"]
 
 writeCompressed :: Show a => FilePath -> a -> IO ()
 writeCompressed path contents =

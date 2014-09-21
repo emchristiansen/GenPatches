@@ -1,42 +1,47 @@
-module DeepDescriptor.Mitsuba.Render where
+module DeepDescriptor.Mitsuba.Render (
+  render,
+  ) where
 
-import qualified Codec.Picture as CP
+-- import qualified Codec.Picture as CP
 import qualified Control.Exception as CE
 import qualified Control.Lens as CL
 import qualified Data.Array.Repa as DAR
 import qualified Data.CSV as DC
 import qualified Data.String.Utils as DSU
-import qualified GHC.Float as GF
+-- import qualified GHC.Float as GF
 import qualified System.FilePath.Posix as SFP
 import qualified Text.Parsec.String as TPS
 import qualified Text.Printf as TP
+import qualified Control.Monad as CM
 
-import DeepDescriptor.RawStrings
+
 import DeepDescriptor.System
+import DeepDescriptor.MVR
+import DeepDescriptor.Mitsuba.Config
 
-makeMitsubaScript :: String -> View -> String
-makeMitsubaScript template v =
+makeMitsubaScript :: String -> Int -> View -> String
+makeMitsubaScript template' numChannels v =
    let
-     replaceIntegrator = DSU.replace "$INTEGRATOR" (showXML $ v CL.^. integratorL)
-     replaceSensor = DSU.replace "$SENSOR" (showXML $ v CL.^. sensorL)
+     replaceIntegrator = DSU.replace "$INTEGRATOR" (showXML $ v CL.^. integrator)
+     replaceSensor = DSU.replace "$SENSOR" (showXML $ (v CL.^. sensor, numChannels))
     in
-      template CL.& replaceIntegrator CL.& replaceSensor
+      template' CL.& replaceIntegrator CL.& replaceSensor
 
 makeSceneDirectory :: FilePath -> String -> IO (String, String)
 makeSceneDirectory modelDirectory mitsubaScript = do
   salt <- randomString 8
   let
-    directory = SFP.joinPath [
+    directory' = SFP.joinPath [
       "/tmp",
       TP.printf "%s_%s" salt $ last $ SFP.splitPath modelDirectory]
-    scriptPath = SFP.joinPath [ directory, "script.xml"]
-  putStrLn $ TP.printf "Copying %s to %s." modelDirectory directory
-  copyDirectory modelDirectory directory
+    scriptPath = SFP.joinPath [ directory', "script.xml"]
+  putStrLn $ TP.printf "Copying %s to %s." modelDirectory directory'
+  copyDirectory modelDirectory directory'
   putStrLn $ TP.printf "Writing Mitsuba script to %s" scriptPath
   writeFile
     scriptPath
     mitsubaScript
-  return (directory, scriptPath)
+  return (directory', scriptPath)
 
 callMitsuba :: FilePath -> FilePath -> IO ()
 callMitsuba scriptPath outPath =
@@ -70,6 +75,7 @@ loadCSVs numChannels csvPattern = do
       return r'
   mapM right [0 .. numChannels - 1]
 
+-- TODO: Encode numChannels at the type level.
 parseRenderingComponent :: [[[String]]] -> DAR.Array DAR.U DAR.DIM3 Double
 parseRenderingComponent csv =
   let
@@ -78,48 +84,51 @@ parseRenderingComponent csv =
     height = length $ head $ head csv
     doubles :: [[[Double]]]
     doubles = map (map (map read)) csv
-    shape = Z :. width :. width :. numChannels
-    f (Z :. row :. column :. channel) = doubles !! channel !! row !! column
+    shape = DAR.Z DAR.:. height DAR.:. width DAR.:. numChannels
+    f (DAR.Z DAR.:. row DAR.:. column DAR.:. channel) = doubles !! channel !! row !! column
   in
-    assert (width == height)
-    computeS $ fromFunction shape f
+    CE.assert (width == height)
+    DAR.computeS $ DAR.fromFunction shape f
 
-renderComponent :: Model -> View -> IO (Array U DIM3 Double)
+renderComponent :: Model -> View -> IO (DAR.Array DAR.U DAR.DIM3 Double)
 renderComponent m v = do
-  template <- readFile $ joinPath [m ^. directoryL, m ^. templateL]
+  template' <- readFile $ SFP.joinPath [m CL.^. directory, m CL.^. template]
   let
-    mitsubaScript = makeMitsubaScript template v
-  (directory, scriptPath) <- makeSceneDirectory (m ^. directoryL) mitsubaScript
+    numChannels :: Int
+    numChannels = case v CL.^. integrator of
+      RGB -> 3
+      Position -> 3
+      Depth -> 1
+    mitsubaScript = makeMitsubaScript template' numChannels v
+  (directory', scriptPath) <- makeSceneDirectory (m CL.^. directory) mitsubaScript
   let
-    npyPath = joinPath[directory, "render.npy"]
-    csvPattern = joinPath[directory, "render_%d.csv"]
-    pythonScript = makePythonScript (v ^. numChannelsL) npyPath csvPattern
-    pyPath = joinPath[directory, "npy_to_csvs.py"]
+    npyPath = SFP.joinPath[directory', "render.npy"]
+    csvPattern = SFP.joinPath[directory', "render_%d.csv"]
+    pythonScript = makePythonScript numChannels npyPath csvPattern
+    pyPath = SFP.joinPath[directory', "npy_to_csvs.py"]
   callMitsuba scriptPath npyPath
   writeFile pyPath pythonScript
   runShell $ unwords ["/usr/bin/python", pyPath]
-  csvs <- loadCSVs (v ^. numChannelsL) csvPattern
+  csvs <- loadCSVs numChannels csvPattern
 
-  -- print $ show $ length csvs
-  -- print $ show $ length $ head csvs
-  -- csvs & head & head & length & show & print
   return $ parseRenderingComponent csvs
 
+-- | render is a Renderer.
+-- It shells out to Mitsuba to do the actual work.
+-- TODO: Make robust to transient failures.
 render :: Renderer
 render m v = do
   let
-    rgb :: View
-    rgb = set numChannelsL 3 $ set (sensorL . numChannelsL') 3 $ set integratorL RGB v
-    position :: View
-    position = set numChannelsL 3 $ set (sensorL . numChannelsL') 3 $ set integratorL Position v
-    distance :: View
-    distance = set numChannelsL 1 $ set (sensorL . numChannelsL') 1 $ set integratorL Distance v
+    dropThirdDimension :: (DAR.Array DAR.U DAR.DIM3 Double) -> (DAR.Array DAR.U DAR.DIM2 Double)
+    dropThirdDimension array3 =
+      let
+        DAR.Z DAR.:. height DAR.:. width DAR.:. 3 = DAR.extent array3
+      in
+        DAR.computeS $ DAR.fromFunction
+          (DAR.Z DAR.:. height DAR.:. width)
+          (\(DAR.Z DAR.:. h DAR.:. w) -> array3 `DAR.index` (DAR.Z DAR.:. h DAR.:. w DAR.:. 1))
   putStrLn "\nRendering all 3 components."
-  -- print rgb
-  r' <- renderComponent m rgb
-  -- print position
-  p <- renderComponent m position
-  -- print distance
-  d <- renderComponent m distance
-  return $ Rendering r' p d
-
+  r <- renderComponent m $ v RGB
+  p <- renderComponent m $ v Position
+  d <- CM.liftM dropThirdDimension $ renderComponent m $ v Depth
+  return $ Rendering r p d

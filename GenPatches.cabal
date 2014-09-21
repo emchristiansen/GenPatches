@@ -11,12 +11,12 @@ library
     lib
 
   exposed-modules:
-    -- DeepDescriptor.System
+    DeepDescriptor.System
     DeepDescriptor.MVR
-    -- DeepDescriptor.Mitsuba.Render
+    DeepDescriptor.Mitsuba.Render
     DeepDescriptor.Mitsuba.Config
-    -- DeepDescriptor.MCMC.Score
-    -- DeepDescriptor.MCMC.Perturb
+    DeepDescriptor.MCMC.Score
+    DeepDescriptor.MCMC.Perturb
     -- DeepDescriptor.MCMC.Iterate
     -- DeepDescriptor.SpatialIndex.SpatialIndex
 
@@ -24,31 +24,31 @@ library
     Haskell2010
 
   build-depends:
-      base >= 4 && < 5
+      base >= 4
     , repa
     , raw-strings-qq
     , MissingH
     , parsec
-    , process
+    -- , process
     , JuicyPixels
     , lens
     , filepath
     , random
     , normaldistribution
-    , xml
+    -- , xml
     , shelly
     , text
-    , persistent
-    , persistent-sqlite
-    , persistent-template
-    , transformers
+    -- , persistent
+    -- , persistent-sqlite
+    -- , persistent-template
+    -- , transformers
     , pipes
-    , binary
+    -- , binary
     , bytestring
     , zlib
     , containers
     , KdTree
-    , QuickCheck
+    -- , QuickCheck
     , vector
     , formatting
 
@@ -63,6 +63,8 @@ library
     MultiParamTypeClasses
     FunctionalDependencies
     OverloadedStrings
+    -- TypeFamilies
+    -- DataKinds
     -- OverloadedStrings
     -- ExtendedDefaultRules
 
