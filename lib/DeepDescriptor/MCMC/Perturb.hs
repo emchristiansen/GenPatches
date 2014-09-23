@@ -26,12 +26,12 @@ instance Perturb Degrees where
   perturb std d = do
     delta <- CM.liftM (std *) DRN.normalIO
     let
-      d' = d + 1.0 * delta
+      d' = unDegrees d + 1.0 * delta
       d''
         | d' > 60.0 = 60.0
         | d' < 20.0 = 20.0
         | otherwise = d'
-    return d''
+    return $ mkDegrees d''
 
 instance Perturb (Double, Vector3D) where
   perturb std v = do
@@ -61,25 +61,41 @@ instance Perturb ((Origin, Up), Target) where
     let
       t' = Target $ DAR.computeS $ offset' DAR.+^ o
       uDotOffset'TimesOffset' = DAR.map (((unUp u) `dot` offset') *) offset'
-      u' = Up $ DAR.computeS $ unUp u DAR.-^ uDotOffset'TimesOffset'
+      u' = Up $ makeUnitLength $ DAR.computeS $ unUp u DAR.-^ uDotOffset'TimesOffset'
     return ((o, u'), t')
 
-perturbUp :: Sensor -> IO Sensor
-perturbUp s = do
-  let
-    up = makeUnitLength $ s ^. upL
-  up' <- liftM makeUnitLength $ pVector 0.1 up
-  return $ set upL up' s
+-- | Perturb the up vector.
+-- Neither the origin nor the target are updated.
+instance Perturb ((Origin, Target), Up) where
+  perturb std ((o, t), u) = do
+    -- delta <- randomVector3D std
+    let
+      offset = makeUnitLength $ DAR.computeS $ unTarget t DAR.-^ unOrigin o
+    u' <- CM.liftM makeUnitLength $ perturb $ unUp u
+    let
+      -- t' = Target $ DAR.computeS $ offset' DAR.+^ o
+      uDotOffsetTimesOffset = DAR.map ((u' `dot` offset) *) offset
+      u'' = Up $ DAR.computeS $ u' DAR.-^ uDotOffsetTimesOffset
+    return ((o, t), u'')
 
-perturb :: Sensor -> IO Sensor
--- perturb s = perturbFOV s >>= perturbOrigin >>= perturbTarget
-perturb s = perturbTarget s >>= perturbOrigin >>= perturbFOV >>= perturbUp
-  -- let
-    -- mutate :: Sensor -> Sensor
-    -- mutate = set fovInDegreesL pFOV' . set originL pOrigin . set targetL pTarget'
-  -- return $ mutate s
+instance Perturb CameraFrame where
+  perturb std cf = do
+    let
+      o = cf CL.^. origin
+      t = cf CL.^. target
+      u = cf CL.^. up
+    f <- perturb std $ cf CL.^. fovInDegrees
+    (t', o') <- perturb std (t, o)
+    ((o'', u''), t'') <- perturb std ((o', u), t')
+    ((o''', t'''), u''') <- perturb std ((o'', t''), u'')
+    return $ mkCameraFrame f o''' t''' u'''
 
-perturbView :: View -> IO View
-perturbView v = do
-  s' <- perturb $ v ^. sensorL
-  return $ set sensorL s' v
+instance Perturb Sensor where
+  perturb std s = do
+    cf' <- perturb std $ s CL.^. cameraFrame
+    return $ CL.set cameraFrame cf' s
+
+instance Perturb View where
+  perturb std v = do
+    s' <- perturb std $ v CL.^. sensor
+    return $ CL.set sensor s' v
