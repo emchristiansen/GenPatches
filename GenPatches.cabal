@@ -17,7 +17,7 @@ library
     DeepDescriptor.Mitsuba.Config
     DeepDescriptor.MCMC.Score
     DeepDescriptor.MCMC.Perturb
-    -- DeepDescriptor.MCMC.Iterate
+    DeepDescriptor.MCMC.Iterate
     -- DeepDescriptor.SpatialIndex.SpatialIndex
 
   default-language:

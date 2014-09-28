@@ -78,16 +78,28 @@ instance Perturb ((Origin, Target), Up) where
       u'' = Up $ DAR.computeS $ u' DAR.-^ uDotOffsetTimesOffset
     return ((o, t), u'')
 
+multiplierDegrees :: Double
+multiplierDegrees = 0.5
+
+multiplierOrigin :: Double
+multiplierOrigin = 10.0
+
+multiplierTarget :: Double
+multiplierTarget = 0.5
+
+multiplierUp :: Double
+multiplierUp = 0.5
+
 instance Perturb CameraFrame where
   perturb std cf = do
     let
       o = cf CL.^. origin
       t = cf CL.^. target
       u = cf CL.^. up
-    f <- perturb std $ cf CL.^. fovInDegrees
-    (t', o') <- perturb std (t, o)
-    ((o'', u''), t'') <- perturb std ((o', u), t')
-    ((o''', t'''), u''') <- perturb std ((o'', t''), u'')
+    f <- perturb (multiplierDegrees * std) $ cf CL.^. fovInDegrees
+    (t', o') <- perturb (multiplierOrigin * std) (t, o)
+    ((o'', u''), t'') <- perturb (multiplierTarget * std) ((o', u), t')
+    ((o''', t'''), u''') <- perturb (multiplierUp * std) ((o'', t''), u'')
     return $ mkCameraFrame f o''' t''' u'''
 
 instance Perturb Sensor where

@@ -1,4 +1,5 @@
 module DeepDescriptor.MCMC.Score (
+  quality,
   score,
   ) where
 

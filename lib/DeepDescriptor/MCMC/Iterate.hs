@@ -1,50 +1,87 @@
 module DeepDescriptor.MCMC.Iterate where
 
-import Data.Random.Normal
-import           System.FilePath.Posix
-import Data.Array.Repa hiding (map)
-import qualified Data.Array.Repa as R
-import Control.Monad
-import Control.Lens
-import Text.Printf
-import Control.Exception
-import Control.Monad (unless)
-import Pipes
-import qualified Data.ByteString.Lazy.Char8 as ByteString
+-- import Data.Random.Normal
+-- import           System.FilePath.Posix
+-- import Data.Array.Repa hiding (map)
+-- import qualified Data.Array.Repa as R
+-- import Control.Monad
+-- import Control.Lens
+-- import Text.Printf
+-- import Control.Exception
+-- import Control.Monad (unless)
+-- import Pipes
+-- import qualified Data.ByteString.Lazy.Char8 as ByteString
 -- import qualified Data.ByteString.Char8 as ByteString
-import Codec.Compression.GZip
-import qualified Data.Sequence as Seq
+-- import Codec.Compression.GZip
+-- import qualified Data.Sequence as Seq
 -- import Data.Sequence ((<|))
-import qualified Data.Foldable as Foldable
+-- import qualified Data.Foldable as Foldable
 -- import System.IO.Error
+import qualified Data.Foldable as DF
+import qualified Control.Lens as CL
+import qualified Control.Exception as CE
+import qualified Text.Printf as TP
+import qualified Codec.Picture as CP
+import qualified Data.Array.Repa as DAR
+import qualified GHC.Float as GF
+import qualified System.FilePath.Posix as SFP
+import qualified Data.Sequence as DS
+import qualified Pipes as P
+import qualified Control.Monad as CM
 
-import DeepDescriptor.Render
-import DeepDescriptor.Score
+import DeepDescriptor.Mitsuba.Render
+import DeepDescriptor.MCMC.Score
+import DeepDescriptor.MCMC.Perturb
+import DeepDescriptor.MVR
 import DeepDescriptor.System
 
+baseSTD :: Double
+baseSTD = 1.0
 
 fastView :: View -> View
-fastView v = set (sensorL . sampleCountL) 1 v
+fastView v = CL.set (sensor . sampleCount) 1 v
 
 runUntilSuccess :: forall a. IO a -> IO a
 runUntilSuccess f = do
-  e <- try f :: IO (Either SomeException a)
+  e <- CE.try f :: IO (Either CE.SomeException a)
   case e of
     Left _ -> runUntilSuccess f
     Right x -> return x
 
+rgbToImage :: RGBImageValid -> CP.Image CP.PixelRGBF
+rgbToImage rgb =
+  let
+    justElseZero :: Maybe Double -> Double
+    justElseZero Nothing = 0.0
+    justElseZero (Just x) = x
+    fromXY x y = CP.PixelRGBF
+      (GF.double2Float $ justElseZero $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 0))
+      (GF.double2Float $ justElseZero $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 1))
+      (GF.double2Float $ justElseZero $ DAR.index rgb (DAR.Z DAR.:. y DAR.:. x DAR.:. 2))
+    DAR.Z DAR.:. width DAR.:. _ DAR.:. 3 = DAR.extent rgb
+  in
+    CP.generateImage fromXY width width
+
+showRendering :: Rendering -> String -> IO()
+showRendering r pattern = do
+  let
+    rgb = TP.printf pattern "rgb"
+    -- distance = printf pattern "distance"
+  putStrLn $ TP.printf "Writing %s" rgb
+  CP.savePngImage rgb $ CP.ImageRGBF $ rgbToImage $ r CL.^. rgb
+  -- putStrLn $ printf "Writing %s" distance
+  -- savePngImage distance $ ImageYF $ distanceToImage $
+    -- r ^. distanceL
+
 getGoodRendering :: Model -> View -> IO (View, Rendering)
 getGoodRendering m v = do
-  v' <- perturbView v
-  -- v' <- return v
+  v' <- perturb baseSTD v
   r <- runUntilSuccess $ render m $ fastView v'
   let
-    -- s = score [] r
     q = quality r
-  -- putStrLn $ printf "Score was %f" s
-  putStrLn $ printf "Quality was %f" $ quality r
+  putStrLn $ TP.printf "Quality was %f" q
   rs <- randomString 8
-  showRendering r $ printf "/tmp/debug_rendering_%s_%s.png" rs "%s"
+  showRendering r $ TP.printf "/tmp/debug_rendering_%s_%s.png" rs "%s"
   if q > 0.5
   then do
     putStrLn "Got a good rendering."
@@ -54,22 +91,25 @@ getGoodRendering m v = do
     putStrLn "Bad rendering, retrying."
     getGoodRendering m v
 
-saveMVR :: MVR -> IO ()
-saveMVR (MVR m v r) = do
+saveMVR ::FilePath ->  MVR -> IO ()
+saveMVR outputRoot (MVR m v r) = do
   rs <- randomString 8
-  showRendering r $ joinPath [renderingRoot, printf "rendering_%s_%s.png" rs "%s"]
-  writeCompressed (joinPath [mvrRoot, printf "mvc_%s.hss" rs]) $ show $ MVR m v r
+  showRendering r $ SFP.joinPath [
+    renderingRoot outputRoot,
+    TP.printf "rendering_%s_%s.png" rs "%s"]
+  writeCompressed
+    (SFP.joinPath [mvrRoot outputRoot, TP.printf "mvc_%s.hss" rs])
+    (show $ MVR m v r)
 
-mcmc2 :: Model -> View -> Seq.Seq Rendering -> Producer MVR IO ()
-mcmc2 !m !v !otherRenderings = do
-   lift $ putStrLn $ printf "Number of generated renderings: %d" $ Seq.length otherRenderings
-   (v', r') <- lift $ getGoodRendering m v
-   (v'', r'') <- lift $ getGoodRendering m v
+mcmc :: Model -> View -> DS.Seq Rendering -> P.Producer MVR IO ()
+mcmc !m !v !otherRenderings = do
+   P.lift $ putStrLn $ TP.printf "Number of generated renderings: %d" $ DS.length otherRenderings
+   (v', r') <- P.lift $ getGoodRendering m v
+   (v'', r'') <- P.lift $ getGoodRendering m v
    let
      (vBetter, rBetter) =
-       if score (Foldable.toList otherRenderings) r' >= score (Foldable.toList otherRenderings) r''
+       if score (DF.toList otherRenderings) r' >= score (DF.toList otherRenderings) r''
        then (v', r')
        else (v'', r'')
-   yield $! MVR m vBetter rBetter
-   mcmc2 m vBetter $ rBetter Seq.<| otherRenderings
-
+   P.yield $! MVR m vBetter rBetter
+   mcmc m vBetter $ rBetter DS.<| otherRenderings
