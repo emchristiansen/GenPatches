@@ -33,7 +33,7 @@ instance Perturb Degrees where
         | otherwise = d'
     return $ mkDegrees d''
 
-instance Perturb (Double, Vector3D) where
+instance Perturb Vector3D where
   perturb std v = do
     delta <- randomVector3D std
     return $ DAR.computeS $ v DAR.+^ delta
@@ -43,9 +43,9 @@ instance Perturb (Target, Origin) where
   perturb std (t, o) = do
     delta <- randomVector3D std
     let
-      o' = DAR.computeS $ o DAR.+^ delta
-      t' = DAR.computeS $ t DAR.+^ delta
-    return (t', o')
+      o' = DAR.computeS $ (unOrigin o) DAR.+^ delta
+      t' = DAR.computeS $ unTarget t DAR.+^ delta
+    return (Target t', Origin o')
 
 dot :: Vector3D -> Vector3D -> Double
 dot v0 v1 = DAR.sumAllS $ v0 DAR.*^ v1
@@ -54,12 +54,12 @@ dot v0 v1 = DAR.sumAllS $ v0 DAR.*^ v1
 -- The origin vector is used for reference but is not updated.
 instance Perturb ((Origin, Up), Target) where
   perturb std ((o, u), t) = do
-    delta <- randomVector3D std
     let
+      offset :: Vector3D
       offset = makeUnitLength $ DAR.computeS $ unTarget t DAR.-^ unOrigin o
-    offset' <- CM.liftM makeUnitLength $ perturb offset
+    offset' <- CM.liftM makeUnitLength $ perturb std offset
     let
-      t' = Target $ DAR.computeS $ offset' DAR.+^ o
+      t' = Target $ DAR.computeS $ offset' DAR.+^ unOrigin o
       uDotOffset'TimesOffset' = DAR.map (((unUp u) `dot` offset') *) offset'
       u' = Up $ makeUnitLength $ DAR.computeS $ unUp u DAR.-^ uDotOffset'TimesOffset'
     return ((o, u'), t')
@@ -71,7 +71,7 @@ instance Perturb ((Origin, Target), Up) where
     -- delta <- randomVector3D std
     let
       offset = makeUnitLength $ DAR.computeS $ unTarget t DAR.-^ unOrigin o
-    u' <- CM.liftM makeUnitLength $ perturb $ unUp u
+    u' <- CM.liftM makeUnitLength $ perturb std $ unUp u
     let
       -- t' = Target $ DAR.computeS $ offset' DAR.+^ o
       uDotOffsetTimesOffset = DAR.map ((u' `dot` offset) *) offset

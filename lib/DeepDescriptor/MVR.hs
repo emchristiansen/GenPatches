@@ -52,6 +52,7 @@ module DeepDescriptor.MVR (
 import qualified Control.Lens as CL
 import qualified Data.Array.Repa as DAR
 import qualified Data.Array.Repa.Repr.Vector as DARRV
+import qualified Control.Exception as CE
 -- import qualified GHC.Float as GF
 -- import qualified Text.Printf as TP
 -- import qualified Control.Exception as CE
@@ -96,11 +97,10 @@ type Vector3D = DAR.Array DAR.U DAR.DIM1 Double
 -- | Degrees is an angle in degrees which measures field of view.
 -- Invariant: It is in the range (0.0, 180.0).
 data Degrees = Degrees { unDegrees :: Double } deriving (Show, Read)
-mkDegrees :: Double -> Maybe Degrees
+mkDegrees :: Double -> Degrees
 mkDegrees d =
-  if d > 0.0 && d < 180.0
-     then Just $ Degrees d
-     else Nothing
+  CE.assert (d > 0.0 && d < 180.0) $
+  Degrees d
 
 data Origin = Origin { unOrigin :: Vector3D } deriving (Show, Read)
 data Target = Target { unTarget :: Vector3D } deriving (Show, Read)
@@ -124,15 +124,14 @@ mkCameraFrame
   -> Target -- ^ 'target' is the point at which the camera is looking.
   -> Up -- ^ 'up' is the up vector of the camera.
              -- It must be orthogonal to 'target' - 'origin'.
-  -> Maybe CameraFrame
+  -> CameraFrame
 mkCameraFrame f o t u =
   let
     lookDirection = (unTarget t) DAR.-^ (unOrigin o)
     dotProduct = DAR.sumAllS $ lookDirection DAR.*^ (unUp u)
   in
-    if ((abs dotProduct) < 0.00001)
-       then Just $ CameraFrame f o t u
-       else Nothing
+    CE.assert ((abs dotProduct) < 0.00001) $
+    CameraFrame f o t u
 
 -- | 'Sensor' specifies the camera location in the scene and some of its
 -- rendering properties.
