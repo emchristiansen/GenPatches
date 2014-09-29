@@ -45,7 +45,7 @@ module DeepDescriptor.MVR (
   depthValid,
   getMask,
   mkRenderingValid,
-  MVR(..),
+  MSR(..),
   ) where
 
 -- import qualified Codec.Picture as CP
@@ -191,7 +191,7 @@ CL.makeLenses ''Rendering
 
 -- | 'Renderer' is a type that takes a 'Model' and renders it from
 -- the given 'View'.
-type Renderer = Model -> (Integrator -> View) -> IO Rendering
+type Renderer = Model -> Sensor -> IO Rendering
 
 -- | 'RGBImageValid' is like 'RGBImage' but only contains valid values.
 type RGBImageValid = DAR.Array DARRV.V DAR.DIM3 (Maybe Double)
@@ -247,7 +247,7 @@ mkRenderingValid r =
   in
     RenderingValid rgb' position' depth'
 
-data MVR = MVR Model View RenderingValid deriving (Show, Read)
+data MSR = MSR Model Sensor RenderingValid deriving (Show, Read)
 
 -- rgbToImage :: DAR.Array DAR.U DAR.DIM3 Double -> CP.Image CP.PixelRGBF
 -- rgbToImage rgb =

@@ -39,8 +39,8 @@ import DeepDescriptor.System
 baseSTD :: Double
 baseSTD = 1.0
 
-fastView :: View -> View
-fastView v = CL.set (sensor . sampleCount) 1 v
+fastView :: Sensor -> Sensor
+fastView s = CL.set sampleCount 1 s
 
 runUntilSuccess :: forall a. IO a -> IO a
 runUntilSuccess f = do
@@ -56,9 +56,15 @@ rgbToImage rgb' =
     justElseZero Nothing = 0.0
     justElseZero (Just x) = x
     fromXY x y = CP.PixelRGBF
-      (GF.double2Float $ justElseZero $ DAR.index rgb' (DAR.Z DAR.:. y DAR.:. x DAR.:. 0))
-      (GF.double2Float $ justElseZero $ DAR.index rgb' (DAR.Z DAR.:. y DAR.:. x DAR.:. 1))
-      (GF.double2Float $ justElseZero $ DAR.index rgb' (DAR.Z DAR.:. y DAR.:. x DAR.:. 2))
+      (GF.double2Float $ justElseZero $ DAR.index
+        rgb'
+        (DAR.Z DAR.:. y DAR.:. x DAR.:. 0))
+      (GF.double2Float $ justElseZero $ DAR.index
+        rgb'
+        (DAR.Z DAR.:. y DAR.:. x DAR.:. 1))
+      (GF.double2Float $ justElseZero $ DAR.index
+        rgb'
+        (DAR.Z DAR.:. y DAR.:. x DAR.:. 2))
     DAR.Z DAR.:. width DAR.:. height DAR.:. 3 = DAR.extent rgb'
   in
     CP.generateImage fromXY width height
@@ -68,50 +74,46 @@ showRendering r pattern = do
   let
     rgb' :: String
     rgb' = TP.printf pattern ("rgb" :: String)
-    -- distance = printf pattern "distance"
   putStrLn $ TP.printf "Writing %s" rgb'
   CP.savePngImage rgb' $ CP.ImageRGBF $ rgbToImage $ r CL.^. rgbValid
-  -- putStrLn $ printf "Writing %s" distance
-  -- savePngImage distance $ ImageYF $ distanceToImage $
-    -- r ^. distanceL
 
--- getGoodRendering :: Model -> (Integrator -> View) -> IO (View, RenderingValid)
--- getGoodRendering m v = do
---   -- v' <- return $ \i -> perturb baseSTD (v i)
---   r <- runUntilSuccess $ render m (\i -> fastView v')
---   let
---     q = quality r
---   putStrLn $ TP.printf "Quality was %f" q
---   rs <- randomString 8
---   showRendering r $ TP.printf "/tmp/debug_rendering_%s_%s.png" rs "%s"
---   if q > 0.5
---   then do
---     putStrLn "Got a good rendering."
---     r' <- runUntilSuccess $ render m v'
---     return (v', r')
---   else do
---     putStrLn "Bad rendering, retrying."
---     getGoodRendering m v
+getGoodRendering :: Model -> Sensor -> IO (Sensor, RenderingValid)
+getGoodRendering m s = do
+  s' <- perturb baseSTD s
+  r <- CM.liftM mkRenderingValid $ runUntilSuccess $ render m $ fastView s'
+  let
+    q = quality r
+  putStrLn $ TP.printf "Quality was %f" q
+  rs <- randomString 8
+  showRendering r $ TP.printf "/tmp/debug_rendering_%s_%s.png" rs ("%s" :: String)
+  if q > 0.5
+  then do
+    putStrLn "Got a good rendering."
+    r' <- CM.liftM mkRenderingValid $ runUntilSuccess $ render m s'
+    return (s', r')
+  else do
+    putStrLn "Bad rendering, retrying."
+    getGoodRendering m s
 
--- saveMVR ::FilePath ->  MVR -> IO ()
--- saveMVR outputRoot (MVR m v r) = do
---   rs <- randomString 8
---   showRendering r $ SFP.joinPath [
---     renderingRoot outputRoot,
---     TP.printf "rendering_%s_%s.png" rs "%s"]
---   writeCompressed
---     (SFP.joinPath [mvrRoot outputRoot, TP.printf "mvc_%s.hss" rs])
---     (show $ MVR m v r)
+saveMSR ::FilePath ->  MSR -> IO ()
+saveMSR outputRoot (MSR m v r) = do
+  rs <- randomString 8
+  showRendering r $ SFP.joinPath [
+    renderingRoot outputRoot,
+    TP.printf "rendering_%s_%s.png" rs ("%s" :: String)]
+  writeCompressed
+    (SFP.joinPath [mvrRoot outputRoot, TP.printf "mvc_%s.hss" rs])
+    (show $ MSR m v r)
 
--- mcmc :: Model -> View -> DS.Seq Rendering -> P.Producer MVR IO ()
--- mcmc !m !v !otherRenderings = do
---    P.lift $ putStrLn $ TP.printf "Number of generated renderings: %d" $ DS.length otherRenderings
---    (v', r') <- P.lift $ getGoodRendering m v
---    (v'', r'') <- P.lift $ getGoodRendering m v
---    let
---      (vBetter, rBetter) =
---        if score (DF.toList otherRenderings) r' >= score (DF.toList otherRenderings) r''
---        then (v', r')
---        else (v'', r'')
---    P.yield $! MVR m vBetter rBetter
---    mcmc m vBetter $ rBetter DS.<| otherRenderings
+mcmc :: Model -> Sensor -> DS.Seq RenderingValid -> P.Producer MSR IO ()
+mcmc !m !s !otherRenderings = do
+   P.lift $ putStrLn $ TP.printf "Number of generated renderings: %d" $ DS.length otherRenderings
+   (v', r') <- P.lift $ getGoodRendering m s
+   (v'', r'') <- P.lift $ getGoodRendering m s
+   let
+     (vBetter, rBetter) =
+       if score (DF.toList otherRenderings) r' >= score (DF.toList otherRenderings) r''
+       then (v', r')
+       else (v'', r'')
+   P.yield $! MSR m vBetter rBetter
+   mcmc m vBetter $ rBetter DS.<| otherRenderings

@@ -117,7 +117,7 @@ renderComponent m v = do
 -- It shells out to Mitsuba to do the actual work.
 -- TODO: Make robust to transient failures.
 render :: Renderer
-render m v = do
+render m s = do
   let
     dropThirdDimension :: (DAR.Array DAR.U DAR.DIM3 Double) -> (DAR.Array DAR.U DAR.DIM2 Double)
     dropThirdDimension array3 =
@@ -128,7 +128,7 @@ render m v = do
           (DAR.Z DAR.:. height DAR.:. width)
           (\(DAR.Z DAR.:. h DAR.:. w) -> array3 `DAR.index` (DAR.Z DAR.:. h DAR.:. w DAR.:. 1))
   putStrLn "\nRendering all 3 components."
-  r <- renderComponent m $ v RGB
-  p <- renderComponent m $ v Position
-  d <- CM.liftM dropThirdDimension $ renderComponent m $ v Depth
+  r <- renderComponent m $ View RGB s
+  p <- renderComponent m $ View Position s
+  d <- CM.liftM dropThirdDimension $ renderComponent m $ View Depth s
   return $ Rendering r p d
