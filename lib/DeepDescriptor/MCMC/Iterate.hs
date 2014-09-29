@@ -95,7 +95,7 @@ getGoodRendering m s = do
     putStrLn "Bad rendering, retrying."
     getGoodRendering m s
 
-saveMSR ::FilePath ->  MSR -> IO ()
+saveMSR :: FilePath ->  MSR -> IO ()
 saveMSR outputRoot (MSR m v r) = do
   rs <- randomString 8
   showRendering r $ SFP.joinPath [
