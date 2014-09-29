@@ -33,7 +33,7 @@ import qualified Formatting as F
 import DeepDescriptor.Mitsuba.Render
 import DeepDescriptor.MCMC.Score
 import DeepDescriptor.MCMC.Perturb
-import DeepDescriptor.MVR
+import DeepDescriptor.MSR
 import DeepDescriptor.System
 
 baseSTD :: Double

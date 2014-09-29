@@ -6,7 +6,7 @@ module DeepDescriptor.MCMC.Score (
 import qualified Control.Lens as CL
 import qualified Data.Array.Repa as DAR
 
-import DeepDescriptor.MVR
+import DeepDescriptor.MSR
 
 quality :: RenderingValid -> Double
 quality r =

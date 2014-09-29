@@ -1,8 +1,8 @@
 {-|
-DeepDescriptor.MVR defines common types for DeepDescriptor, including the Model, View, and Rendering types.
+DeepDescriptor.MSR defines common types for DeepDescriptor, including the Model, View, and Rendering types.
 -}
 
-module DeepDescriptor.MVR (
+module DeepDescriptor.MSR (
   Model(..),
   directory,
   template,

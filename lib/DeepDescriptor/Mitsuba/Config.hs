@@ -10,7 +10,7 @@ import qualified Control.Exception as CE
 import qualified Formatting as F
 import qualified Data.Text.Lazy as DTL
 
-import DeepDescriptor.MVR
+import DeepDescriptor.MSR
 
 -- | ShowXML is a class of things that can be rendered to XML.
 class ShowXML a where

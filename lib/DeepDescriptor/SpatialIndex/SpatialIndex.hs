@@ -20,8 +20,8 @@ instance Point IndexedPatch where
   coord i (IndexedPatch p _) = coord i p
   dist2 (IndexedPatch p0 _) (IndexedPatch p1 _) = dist2 p0 p1
 
-getPatches :: Int -> MVR -> V.Vector IndexedPatch
-getPatches patchWidth (MVR _ _ r) = V.fromList $ do
+getPatches :: Int -> MSR -> V.Vector IndexedPatch
+getPatches patchWidth (MSR _ _ r) = V.fromList $ do
   let
     Z :. rows :. columns :. 3 = extent $ r ^. rgbL
   row <- [0 .. rows - patchWidth]

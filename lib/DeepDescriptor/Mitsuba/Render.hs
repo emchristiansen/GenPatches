@@ -16,7 +16,7 @@ import qualified Control.Monad as CM
 
 
 import DeepDescriptor.System
-import DeepDescriptor.MVR
+import DeepDescriptor.MSR
 import DeepDescriptor.Mitsuba.Config
 
 makeMitsubaScript :: String -> Int -> View -> String

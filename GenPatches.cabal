@@ -12,7 +12,7 @@ library
 
   exposed-modules:
     DeepDescriptor.System
-    DeepDescriptor.MVR
+    DeepDescriptor.MSR
     DeepDescriptor.Mitsuba.Render
     DeepDescriptor.Mitsuba.Config
     DeepDescriptor.MCMC.Score

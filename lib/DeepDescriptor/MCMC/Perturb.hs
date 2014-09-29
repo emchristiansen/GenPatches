@@ -5,7 +5,7 @@ import qualified Data.Array.Repa as DAR
 import qualified Data.Random.Normal as DRN
 import qualified Control.Monad as CM
 
-import DeepDescriptor.MVR
+import DeepDescriptor.MSR
 
 class Perturb a where
   perturb :: Double -> a -> IO a
