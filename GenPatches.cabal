@@ -1,4 +1,4 @@
-name:                GenPatches
+name:                DeepDescriptor
 version:             0.0.1.0
 license:             MIT
 author:              Eric Christiansen
@@ -74,20 +74,20 @@ library
     -caf-all
     -O2
 
--- executable GenPatches
-  -- hs-source-dirs:
-    -- bin
+executable GeneratePatches
+  hs-source-dirs:
+    bin
 
-  -- main-is:
-    -- Main.hs
+  main-is:
+    GeneratePatches.hs
 
-  -- default-language:
-    -- Haskell2010
+  default-language:
+    Haskell2010
 
-  -- build-depends:
-      -- base >= 4 && < 5
-    -- , GenPatches
-    -- , repa
+  build-depends:
+      base >= 4 && < 5
+    , DeepDescriptor
+    , repa
     -- -- , repa-algorithms
     -- , raw-strings-qq
     -- , MissingH
@@ -100,18 +100,18 @@ library
     -- , persistent-sqlite
     -- , persistent-template
     -- , transformers
-    -- , pipes
-    -- , containers
+    , pipes
+    , containers
 
 
-  -- default-extensions:
-    -- TemplateHaskell
-    -- RankNTypes
+  default-extensions:
+    TemplateHaskell
+    RankNTypes
 
-  -- ghc-options:
-    -- -Wall
-    -- -auto-all
-    -- -caf-all
+  ghc-options:
+    -Wall
+    -auto-all
+    -caf-all
 
 -- executable MakeNN
   -- hs-source-dirs:
