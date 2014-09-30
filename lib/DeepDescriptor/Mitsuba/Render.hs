@@ -13,6 +13,8 @@ import qualified System.FilePath.Posix as SFP
 import qualified Text.Parsec.String as TPS
 import qualified Text.Printf as TP
 import qualified Control.Monad as CM
+import qualified Shelly as S
+import qualified Data.Text as DT
 
 
 import DeepDescriptor.System
@@ -36,7 +38,9 @@ makeSceneDirectory modelDirectory mitsubaScript = do
       TP.printf "%s_%s" salt $ last $ SFP.splitPath modelDirectory]
     scriptPath = SFP.joinPath [ directory', "script.xml"]
   putStrLn $ TP.printf "Copying %s to %s." modelDirectory directory'
-  copyDirectory modelDirectory directory'
+  S.shelly $ S.cp_r
+    (S.fromText $ DT.pack modelDirectory)
+    (S.fromText $ DT.pack directory')
   putStrLn $ TP.printf "Writing Mitsuba script to %s" scriptPath
   writeFile
     scriptPath

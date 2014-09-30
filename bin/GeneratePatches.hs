@@ -24,6 +24,8 @@ import qualified Data.Array.Repa as DAR
 import qualified Data.Sequence as DS
 import qualified Pipes as P
 import qualified Pipes.Prelude as PP
+import qualified Shelly as S
+import qualified Data.Text as DT
 
 import DeepDescriptor.MSR
 import DeepDescriptor.MCMC.Iterate
@@ -65,9 +67,9 @@ main = do
     -- v = View 3 integrator s
     m = Model "data/cbox" "cbox.xml"
   -- mcmc m v []
-  makeDirectory outputRoot
-  makeDirectory $ renderingRoot outputRoot
-  makeDirectory $ mvrRoot outputRoot
+  S.shelly $ S.mkdir_p $ S.fromText $ DT.pack outputRoot
+  S.shelly $ S.mkdir $ S.fromText $ DT.pack $ renderingRoot outputRoot
+  S.shelly $ S.mkdir $ S.fromText $ DT.pack $ mvrRoot outputRoot
 
   let
     mvrs :: P.Producer MSR IO ()

@@ -48,6 +48,7 @@ library
     , zlib
     , containers
     , KdTree
+    , Interpolation
     -- , QuickCheck
     , vector
     , formatting
@@ -63,10 +64,10 @@ library
     MultiParamTypeClasses
     FunctionalDependencies
     OverloadedStrings
+    ExtendedDefaultRules
     -- TypeFamilies
     -- DataKinds
     -- OverloadedStrings
-    -- ExtendedDefaultRules
 
   ghc-options:
     -Wall
@@ -100,6 +101,8 @@ executable GeneratePatches
     -- , persistent-sqlite
     -- , persistent-template
     -- , transformers
+    , shelly
+    , text
     , pipes
     , containers
 
@@ -107,6 +110,15 @@ executable GeneratePatches
   default-extensions:
     TemplateHaskell
     RankNTypes
+    QuasiQuotes
+    ScopedTypeVariables
+    BangPatterns
+    DeriveGeneric
+    FlexibleInstances
+    MultiParamTypeClasses
+    FunctionalDependencies
+    OverloadedStrings
+    ExtendedDefaultRules
 
   ghc-options:
     -Wall

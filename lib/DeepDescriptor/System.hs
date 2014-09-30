@@ -2,26 +2,22 @@ module DeepDescriptor.System where
 
 import qualified Control.Monad as CM
 import qualified System.Random as SR
-import qualified Text.Printf as TP
 import qualified Data.ByteString.Lazy.Char8 as DBLC
 import qualified Codec.Compression.GZip as CCG
 import qualified System.FilePath.Posix as SFP
 import qualified Shelly as S
 import qualified Data.Text as DT
+import qualified Formatting as F
+import qualified Formatting.ShortFormatters as FS
+import qualified Data.Text.Lazy as DTL
 
 runShell :: String -> IO()
 runShell command = do
-  putStrLn $ TP.printf "Running shell command: %s" command
+  F.fprint ("Running shell command: " F.% FS.s) command
   let
     binary : arguments = map DT.pack $ words command
   _ <- S.shelly $ S.silently $ S.run (S.fromText binary) arguments
   return ()
-
-copyDirectory :: FilePath -> FilePath -> IO ()
-copyDirectory from to = runShell $ TP.printf "cp -r %s %s" from to
-
-makeDirectory :: FilePath -> IO ()
-makeDirectory dir = runShell $ TP.printf "mkdir -p %s" dir
 
 randomString :: Int -> IO String
 randomString length' = do
