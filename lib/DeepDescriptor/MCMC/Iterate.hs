@@ -46,7 +46,9 @@ runUntilSuccess :: forall a. IO a -> IO a
 runUntilSuccess f = do
   e <- CE.try f :: IO (Either CE.SomeException a)
   case e of
-    Left _ -> runUntilSuccess f
+    Left err -> do
+      putStrLn $ show err
+      runUntilSuccess f
     Right x -> return x
 
 rgbToImage :: RGBImageValid -> CP.Image CP.PixelRGBF

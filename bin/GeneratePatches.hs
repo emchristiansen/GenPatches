@@ -72,7 +72,7 @@ main = do
   let
     mvrs :: P.Producer MSR IO ()
     mvrs = mcmc m s DS.empty
-  P.runEffect $ P.for (mvrs P.>-> PP.take 100) (P.lift . (saveMSR outputRoot))
+  P.runEffect $ P.for (mvrs P.>-> PP.take 2) (P.lift . (saveMSR outputRoot))
 
   -- s' <- perturb s
   -- print s
