@@ -52,24 +52,27 @@ outputRoot = "~/t/2014_q3/mcmc"
 main :: IO ()
 main = do
   let
+    cf = mkCameraFrame
+      (mkDegrees 40.0)
+      (Origin $ DAR.fromListUnboxed (DAR.Z DAR.:. 3) [278.0, 273.0, -800.0])
+      (Target $ DAR.fromListUnboxed (DAR.Z DAR.:. 3) [278.0, 273.0, -799.0])
+      (Up $ DAR.fromListUnboxed (DAR.Z DAR.:. 3) [0.0, 1.0, 0.0])
     s = Sensor
-      40.0
-      (DAR.fromListUnboxed (DAR.Z DAR.:. 3) [278.0, 273.0, -800.0])
-      (DAR.fromListUnboxed (DAR.Z DAR.:. 3) [278.0, 273.0, -799.0])
-      (DAR.fromListUnboxed (DAR.Z DAR.:. 3) [0.0, 1.0, 0.0])
+      cf
       256
-      3
       128
-    integrator = RGB
-    v = View 3 integrator s
+    -- integrator = RGB
+    -- v = View 3 integrator s
     m = Model "data/cbox" "cbox.xml"
   -- mcmc m v []
   makeDirectory outputRoot
   makeDirectory $ renderingRoot outputRoot
   makeDirectory $ mvrRoot outputRoot
 
-  let mvrs = mcmc m v DS.empty
-  P.runEffect $ P.for (mvrs P.>-> PP.take 100) (P.lift . saveMSR)
+  let
+    mvrs :: P.Producer MSR IO ()
+    mvrs = mcmc m s DS.empty
+  P.runEffect $ P.for (mvrs P.>-> PP.take 100) (P.lift . (saveMSR outputRoot))
 
   -- s' <- perturb s
   -- print s
