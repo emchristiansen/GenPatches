@@ -15,6 +15,10 @@ import qualified Text.Printf as TP
 import qualified Control.Monad as CM
 import qualified Shelly as S
 import qualified Data.Text as DT
+import qualified Formatting as F
+import qualified Formatting.ShortFormatters as FS
+import qualified Data.Text.Lazy as DTL
+import qualified Data.String.Interpolation as DSI
 
 
 import DeepDescriptor.System
@@ -33,15 +37,16 @@ makeSceneDirectory :: FilePath -> String -> IO (String, String)
 makeSceneDirectory modelDirectory mitsubaScript = do
   salt <- randomString 8
   let
+    last' = last $ SFP.splitPath modelDirectory
     directory' = SFP.joinPath [
       "/tmp",
-      TP.printf "%s_%s" salt $ last $ SFP.splitPath modelDirectory]
+      [DSI.str|$salt$_$last'$|]]
     scriptPath = SFP.joinPath [ directory', "script.xml"]
-  putStrLn $ TP.printf "Copying %s to %s." modelDirectory directory'
+  putStrLn $ [DSI.str|Copying $modelDirectory$ to $directory'$.|]
   S.shelly $ S.cp_r
     (S.fromText $ DT.pack modelDirectory)
     (S.fromText $ DT.pack directory')
-  putStrLn $ TP.printf "Writing Mitsuba script to %s" scriptPath
+  putStrLn $ [DSI.str|Writing Mitsuba script to $scriptPath$|]
   writeFile
     scriptPath
     mitsubaScript
@@ -60,12 +65,13 @@ makePythonScript numChannels npyPath csvPattern =
   let
     first = [
       "import numpy",
-      TP.printf "arr = numpy.load(\"%s\")" npyPath,
+      [DSI.str|arr = numpy.load("$npyPath$")|],
       "if len(arr.shape) == 2: arr = numpy.reshape(arr, (arr.shape[0], arr.shape[1], 1))"]
-    save i = TP.printf
-      "numpy.savetxt(\"%s\", arr[:, :, %d], delimiter=\",\")"
-      (TP.printf csvPattern i :: String)
-      i
+    save i =
+      let
+        cpi = csvPattern i :: String
+      in
+       [DSI.str|numpy.savetxt("$cpi$", arr[:, :, $show i$], delimiter=",")|]
     second = map save [0 .. numChannels - 1]
   in
     unlines $ first ++ second
