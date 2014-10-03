@@ -77,10 +77,10 @@ library
 
 executable GeneratePatches
   hs-source-dirs:
-    bin
+    GeneratePatches
 
   main-is:
-    GeneratePatches.hs
+    Main.hs
 
   default-language:
     Haskell2010

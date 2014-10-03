@@ -30,6 +30,7 @@ import qualified Pipes as P
 import qualified Control.Monad as CM
 import qualified Formatting as F
 import qualified Data.String.Interpolation as DSI
+import qualified Control.Concurrent as CC
 
 import DeepDescriptor.Mitsuba.Render
 import DeepDescriptor.MCMC.Score
@@ -49,6 +50,7 @@ runUntilSuccess f = do
   case e of
     Left err -> do
       putStrLn $ show err
+      CC.threadDelay 1000000
       runUntilSuccess f
     Right x -> return x
 

@@ -48,6 +48,7 @@ instance ShowXML (Sensor, Int) where
       u = formatVector $ unUp $ s CL.^. cameraFrame CL.^. up
       sc  = show $ s CL.^. sampleCount
       r = show $ s CL.^. resolution
+      pixelFormat = if numChannels == 1 then "luminance" else "rgb"
     in
       [DSI.str|
 <sensor type="perspective">
@@ -68,7 +69,7 @@ instance ShowXML (Sensor, Int) where
     <string name="fileFormat" value="numpy"/>
     <integer name="width" value="$r$"/>
     <integer name="height" value="$r$"/>
-    <string name="pixelFormat" value="$show numChannels$"/>
+    <string name="pixelFormat" value="$pixelFormat$"/>
     <rfilter type="gaussian"/>
   </film>
 </sensor>|]
