@@ -11,7 +11,7 @@ import qualified Data.String.Utils as DSU
 -- import qualified GHC.Float as GF
 import qualified System.FilePath.Posix as SFP
 import qualified Text.Parsec.String as TPS
-import qualified Text.Printf as TP
+-- import qualified Text.Printf as TP
 import qualified Control.Monad as CM
 import qualified Shelly as S
 import qualified Data.Text as DT
@@ -60,7 +60,7 @@ callMitsuba scriptPath outPath =
     "-o",
     outPath]
 
-makePythonScript :: Int -> String -> String -> String
+makePythonScript :: Int -> String -> (Int -> String) -> String
 makePythonScript numChannels npyPath csvPattern =
   let
     first = [
@@ -76,10 +76,10 @@ makePythonScript numChannels npyPath csvPattern =
   in
     unlines $ first ++ second
 
-loadCSVs :: Int -> String -> IO [[[String]]]
+loadCSVs :: Int -> (Int -> String) -> IO [[[String]]]
 loadCSVs numChannels csvPattern = do
   let
-    load i = TPS.parseFromFile DC.csvFile $ TP.printf csvPattern i
+    load i = TPS.parseFromFile DC.csvFile $ csvPattern i
     right i = do
       Right r' <- load i
       return r'
@@ -113,7 +113,10 @@ renderComponent m v = do
   (directory', scriptPath) <- makeSceneDirectory (m CL.^. directory) mitsubaScript
   let
     npyPath = SFP.joinPath[directory', "render.npy"]
-    csvPattern = SFP.joinPath[directory', "render_%d.csv"]
+    csvPattern :: Int -> String
+    csvPattern i = SFP.joinPath[
+      directory',
+      [DSI.str|render_$show i$.csv|]]
     pythonScript = makePythonScript numChannels npyPath csvPattern
     pyPath = SFP.joinPath[directory', "npy_to_csvs.py"]
   callMitsuba scriptPath npyPath

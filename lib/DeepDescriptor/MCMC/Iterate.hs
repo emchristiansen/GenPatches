@@ -20,7 +20,7 @@ module DeepDescriptor.MCMC.Iterate where
 import qualified Data.Foldable as DF
 import qualified Control.Lens as CL
 import qualified Control.Exception as CE
-import qualified Text.Printf as TP
+-- import qualified Text.Printf as TP
 import qualified Codec.Picture as CP
 import qualified Data.Array.Repa as DAR
 import qualified GHC.Float as GF
@@ -29,6 +29,7 @@ import qualified Data.Sequence as DS
 import qualified Pipes as P
 import qualified Control.Monad as CM
 import qualified Formatting as F
+import qualified Data.String.Interpolation as DSI
 
 import DeepDescriptor.Mitsuba.Render
 import DeepDescriptor.MCMC.Score
@@ -71,12 +72,12 @@ rgbToImage rgb' =
   in
     CP.generateImage fromXY width height
 
-showRendering :: RenderingValid -> String -> IO ()
+showRendering :: RenderingValid -> (String -> String) -> IO ()
 showRendering r pattern = do
   let
     rgb' :: String
-    rgb' = TP.printf pattern ("rgb" :: String)
-  putStrLn $ TP.printf "Writing %s" rgb'
+    rgb' = pattern "rgb"
+  putStrLn [DSI.str|Writing $rgb'$|]
   CP.savePngImage rgb' $ CP.ImageRGBF $ rgbToImage $ r CL.^. rgbValid
 
 getGoodRendering :: Model -> Sensor -> IO (Sensor, RenderingValid)
@@ -85,9 +86,9 @@ getGoodRendering m s = do
   r <- CM.liftM mkRenderingValid $ runUntilSuccess $ render m $ fastView s'
   let
     q = quality r
-  putStrLn $ TP.printf "Quality was %f" q
+  putStrLn [DSI.str|Quality was $show q$|]
   rs <- randomString 8
-  showRendering r $ TP.printf "/tmp/debug_rendering_%s_%s.png" rs ("%s" :: String)
+  showRendering r $ \x -> [DSI.str|/tmp/debug_rendering_$rs$_$x$.png|]
   if q > 0.5
   then do
     putStrLn "Got a good rendering."
@@ -100,22 +101,26 @@ getGoodRendering m s = do
 saveMSR :: FilePath ->  MSR -> IO ()
 saveMSR outputRoot (MSR m v r) = do
   rs <- randomString 8
-  showRendering r $ SFP.joinPath [
+  showRendering r $ \x -> SFP.joinPath [
     renderingRoot outputRoot,
-    TP.printf "rendering_%s_%s.png" rs ("%s" :: String)]
+    [DSI.str|rendering_$rs$_$x$.png|]]
   writeCompressed
-    (SFP.joinPath [mvrRoot outputRoot, TP.printf "mvc_%s.hss" rs])
+    (SFP.joinPath [
+        mvrRoot outputRoot,
+        [DSI.str|mvc_$rs$.hss|]])
     (show $ MSR m v r)
 
 mcmc :: Model -> Sensor -> DS.Seq RenderingValid -> P.Producer MSR IO ()
 mcmc !m !s !otherRenderings = do
-   P.lift $ putStrLn $ TP.printf "Number of generated renderings: %d" $ DS.length otherRenderings
-   (v', r') <- P.lift $ getGoodRendering m s
-   (v'', r'') <- P.lift $ getGoodRendering m s
-   let
-     (vBetter, rBetter) =
-       if score (DF.toList otherRenderings) r' >= score (DF.toList otherRenderings) r''
-       then (v', r')
-       else (v'', r'')
-   P.yield $! MSR m vBetter rBetter
-   mcmc m vBetter $ rBetter DS.<| otherRenderings
+  let
+    length' = show $ DS.length otherRenderings
+  P.lift $ putStrLn [DSI.str|Number of generated renderings: $length'$|]
+  (v', r') <- P.lift $ getGoodRendering m s
+  (v'', r'') <- P.lift $ getGoodRendering m s
+  let
+    (vBetter, rBetter) =
+      if score (DF.toList otherRenderings) r' >= score (DF.toList otherRenderings) r''
+      then (v', r')
+      else (v'', r'')
+  P.yield $! MSR m vBetter rBetter
+  mcmc m vBetter $ rBetter DS.<| otherRenderings
