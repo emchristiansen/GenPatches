@@ -15,9 +15,9 @@ import qualified Text.Parsec.String as TPS
 import qualified Control.Monad as CM
 import qualified Shelly as S
 import qualified Data.Text as DT
-import qualified Formatting as F
-import qualified Formatting.ShortFormatters as FS
-import qualified Data.Text.Lazy as DTL
+-- import qualified Formatting as F
+-- import qualified Formatting.ShortFormatters as FS
+-- import qualified Data.Text.Lazy as DTL
 import qualified Data.String.Interpolation as DSI
 
 

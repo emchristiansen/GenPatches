@@ -19,7 +19,7 @@ module DeepDescriptor.MCMC.Iterate where
 -- import System.IO.Error
 import qualified Data.Foldable as DF
 import qualified Control.Lens as CL
-import qualified Control.Exception as CE
+-- import qualified Control.Exception as CE
 -- import qualified Text.Printf as TP
 import qualified Codec.Picture as CP
 import qualified Data.Array.Repa as DAR
@@ -28,9 +28,9 @@ import qualified System.FilePath.Posix as SFP
 import qualified Data.Sequence as DS
 import qualified Pipes as P
 import qualified Control.Monad as CM
-import qualified Formatting as F
+-- import qualified Formatting as F
 import qualified Data.String.Interpolation as DSI
-import qualified Control.Concurrent as CC
+-- import qualified Control.Concurrent as CC
 
 import DeepDescriptor.Mitsuba.Render
 import DeepDescriptor.MCMC.Score

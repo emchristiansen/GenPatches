@@ -1,31 +1,11 @@
--- import           Data.Array.Repa    hiding (extract, map, (++))
--- import           Text.RawString.QQ
--- import           System.Process
--- import           Text.Printf
--- import           Text.XML.Light
--- import           Data.CSV
--- import Text.Parsec
--- import           Codec.Picture
--- import           Control.Lens       hiding (index)
--- import           GHC.Float
--- import           Text.Parsec.String
--- import RenderUtil
--- import Control.Lens
--- import MCMC
--- import SystemUtil
--- import           Control.Monad.IO.Class  (liftIO)
--- import           Database.Persist
--- import           Database.Persist.Sqlite
--- import           Database.Persist.TH
--- import Pipes
--- import qualified Pipes.Prelude as P
--- import qualified Data.Sequence as Seq
 import qualified Data.Array.Repa as DAR
 import qualified Data.Sequence as DS
 import qualified Pipes as P
 import qualified Pipes.Prelude as PP
 import qualified Shelly as S
 import qualified Data.Text as DT
+import qualified System.FilePath.Posix as SFP
+import qualified Control.Monad as CM
 
 import DeepDescriptor.MSR
 import DeepDescriptor.MCMC.Iterate
@@ -49,7 +29,12 @@ import DeepDescriptor.System
   -- rendering Rendering
 -- |]
 
-outputRoot = "/home/eric/t/2014_q3/mcmc"
+outputRoot :: IO String
+outputRoot = do
+  home <- CM.liftM (fmap DT.unpack) $ S.shelly $ S.get_env "HOME"
+  case home of
+    Just h -> return $ SFP.joinPath[h, "t/2014_q3/mcmc"]
+    Nothing -> undefined
 
 main :: IO ()
 main = do
@@ -67,14 +52,15 @@ main = do
     -- v = View 3 integrator s
     m = Model "data/cbox" "cbox.xml"
   -- mcmc m v []
-  S.shelly $ S.mkdir_p $ S.fromText $ DT.pack outputRoot
-  S.shelly $ S.mkdir_p $ S.fromText $ DT.pack $ renderingRoot outputRoot
-  S.shelly $ S.mkdir_p $ S.fromText $ DT.pack $ mvrRoot outputRoot
+  outputRoot' <- outputRoot
+  S.shelly $ S.mkdir_p $ S.fromText $ DT.pack outputRoot'
+  S.shelly $ S.mkdir_p $ S.fromText $ DT.pack $ renderingRoot outputRoot'
+  S.shelly $ S.mkdir_p $ S.fromText $ DT.pack $ mvrRoot outputRoot'
 
   let
     mvrs :: P.Producer MSR IO ()
     mvrs = mcmc m s DS.empty
-  P.runEffect $ P.for (mvrs P.>-> PP.take 1) (P.lift . (saveMSR outputRoot))
+  P.runEffect $ P.for (mvrs P.>-> PP.take 1) (P.lift . (saveMSR outputRoot'))
 
   -- s' <- perturb s
   -- print s

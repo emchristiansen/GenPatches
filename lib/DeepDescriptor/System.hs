@@ -7,9 +7,9 @@ import qualified Codec.Compression.GZip as CCG
 import qualified System.FilePath.Posix as SFP
 import qualified Shelly as S
 import qualified Data.Text as DT
-import qualified Formatting as F
-import qualified Formatting.ShortFormatters as FS
-import qualified Data.Text.Lazy as DTL
+-- import qualified Formatting as F
+-- import qualified Formatting.ShortFormatters as FS
+-- import qualified Data.Text.Lazy as DTL
 import qualified Data.String.Interpolation as DSI
 
 runShell :: String -> IO()

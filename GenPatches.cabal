@@ -105,6 +105,7 @@ executable GeneratePatches
     , text
     , pipes
     , containers
+    , filepath
 
 
   default-extensions:
