@@ -39,7 +39,7 @@ import DeepDescriptor.MSR
 import DeepDescriptor.System
 
 baseSTD :: Double
-baseSTD = 1.0
+baseSTD = 2 ** (-4)
 
 fastView :: Sensor -> Sensor
 fastView s = CL.set sampleCount 1 s
