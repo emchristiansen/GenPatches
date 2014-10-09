@@ -135,13 +135,13 @@ render m s = do
     dropThirdDimension :: (DAR.Array DAR.U DAR.DIM3 Double) -> (DAR.Array DAR.U DAR.DIM2 Double)
     dropThirdDimension array3 =
       let
-        DAR.Z DAR.:. height DAR.:. width DAR.:. 3 = DAR.extent array3
+        DAR.Z DAR.:. height DAR.:. width DAR.:. 1 = DAR.extent array3
       in
         DAR.computeS $ DAR.fromFunction
           (DAR.Z DAR.:. height DAR.:. width)
-          (\(DAR.Z DAR.:. h DAR.:. w) -> array3 `DAR.index` (DAR.Z DAR.:. h DAR.:. w DAR.:. 1))
+          (\(DAR.Z DAR.:. h DAR.:. w) -> array3 `DAR.index` (DAR.Z DAR.:. h DAR.:. w DAR.:. 0))
   putStrLn "\nRendering all 3 components."
   r <- renderComponent m $ View RGB s
   p <- renderComponent m $ View Position s
   d <- CM.liftM dropThirdDimension $ renderComponent m $ View Depth s
-  return $ Rendering r p d
+  return $ mkRendering r p d

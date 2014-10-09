@@ -2,5 +2,5 @@
 
 cabal configure \
   --enable-tests \
-  # --enable-library-profiling \
-  # --enable-executable-profiling
+  --enable-library-profiling \
+  --enable-executable-profiling

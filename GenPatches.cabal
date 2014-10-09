@@ -18,7 +18,6 @@ library
     DeepDescriptor.MCMC.Score
     DeepDescriptor.MCMC.Perturb
     DeepDescriptor.MCMC.Iterate
-    DeepDescriptor.FakeMain
     -- DeepDescriptor.SpatialIndex.SpatialIndex
 
   default-language:

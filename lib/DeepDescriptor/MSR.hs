@@ -31,7 +31,8 @@ module DeepDescriptor.MSR (
   RGBImage,
   PositionMap,
   DepthMap,
-  Rendering(..),
+  Rendering(),
+  mkRendering,
   rgb,
   position,
   depth,
@@ -39,12 +40,12 @@ module DeepDescriptor.MSR (
   RGBImageValid,
   PositionMapValid,
   DepthMapValid,
-  RenderingValid(..),
+  RenderingValid(),
+  mkRenderingValid,
   rgbValid,
   positionValid,
   depthValid,
   getMask,
-  mkRenderingValid,
   MSR(..),
   ) where
 
@@ -179,15 +180,31 @@ type DepthMap = DAR.Array DAR.U DAR.DIM2 Double
 -- happen for rays that don't intersect any scene objects.
 -- TODO: Invariant: All elements have the same width and height.
 data Rendering = Rendering {
-  -- 'rgb' is the HDR color image.
   _rgb :: RGBImage,
-  -- 'position' is the 3D coordinates of each of the pixels in the RGB image.
   _position :: PositionMap,
-  -- 'depth' is the is the distance from the camera center to the object
-  -- under each pixel.
   _depth :: DepthMap
 } deriving (Show, Read)
 CL.makeLenses ''Rendering
+
+mkRendering
+  :: RGBImage -- ^ 'rgb' is the HDR color image.
+  -> PositionMap -- ^ 'position' is the 3D coordinates of each of the pixels in the RGB image.
+  -> DepthMap -- ^ 'depth' is the is the distance from the camera center
+              -- to the object under each pixel.
+  -> Rendering
+mkRendering r p d =
+  let
+    DAR.Z DAR.:. rowsR DAR.:. columnsR DAR.:. 3 = DAR.extent r
+    DAR.Z DAR.:. rowsP DAR.:. columnsP DAR.:. 3 = DAR.extent p
+    DAR.Z DAR.:. rowsD DAR.:. columnsD = DAR.extent d
+  in
+    CE.assert (rowsR > 0) $
+    CE.assert (columnsR > 0) $
+    CE.assert (rowsR == rowsP) $
+    CE.assert (columnsR == columnsP) $
+    CE.assert (rowsR == rowsD) $
+    CE.assert (columnsR == columnsD) $
+    Rendering r p d
 
 -- | 'Renderer' is a type that takes a 'Model' and renders it from
 -- the given 'View'.
@@ -229,7 +246,7 @@ mkRenderingValid r =
     from3D :: DAR.Array DAR.U DAR.DIM3 Double -> RGBImageValid
     from3D array = DAR.computeS $ DAR.fromFunction
       (DAR.extent array)
-      (\location @ (DAR.Z DAR.:. row DAR.:. column DAR.:. 3) ->
+      (\location @ (DAR.Z DAR.:. row DAR.:. column DAR.:. _) ->
         if DAR.index mask (DAR.Z DAR.:. row DAR.:. column)
            then Just $ DAR.index array location
            else Nothing)

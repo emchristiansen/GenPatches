@@ -45,14 +45,15 @@ fastView :: Sensor -> Sensor
 fastView s = CL.set sampleCount 1 s
 
 runUntilSuccess :: forall a. IO a -> IO a
-runUntilSuccess f = do
-  e <- CE.try f :: IO (Either CE.SomeException a)
-  case e of
-    Left err -> do
-      putStrLn $ show err
-      CC.threadDelay 1000000
-      runUntilSuccess f
-    Right x -> return x
+-- runUntilSuccess f = do
+  -- e <- CE.try f :: IO (Either CE.SomeException a)
+  -- case e of
+    -- Left err -> do
+      -- putStrLn $ show err
+      -- CC.threadDelay 1000000
+      -- runUntilSuccess f
+    -- Right x -> return x
+runUntilSuccess f = f
 
 rgbToImage :: RGBImageValid -> CP.Image CP.PixelRGBF
 rgbToImage rgb' =

@@ -49,7 +49,7 @@ import DeepDescriptor.System
   -- rendering Rendering
 -- |]
 
-outputRoot = "~/t/2014_q3/mcmc"
+outputRoot = "/home/eric/t/2014_q3/mcmc"
 
 main :: IO ()
 main = do
@@ -74,7 +74,7 @@ main = do
   let
     mvrs :: P.Producer MSR IO ()
     mvrs = mcmc m s DS.empty
-  P.runEffect $ P.for (mvrs P.>-> PP.take 2) (P.lift . (saveMSR outputRoot))
+  P.runEffect $ P.for (mvrs P.>-> PP.take 1) (P.lift . (saveMSR outputRoot))
 
   -- s' <- perturb s
   -- print s
